@@ -16,3 +16,6 @@ The game we will be playing is _Street Fighter II - Special Champion Edition (US
   ```
   And you should be able to run and interact with the game.
 
+### Preparation with Scripts
+
+* Alternatively, can use `prepare.sh` to prepare for the environment

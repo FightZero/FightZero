@@ -1,0 +1,3 @@
+[submodule "muzero-general"]
+	path = muzero-general
+	url = https://github.com/FightZero/muzero-general.git
