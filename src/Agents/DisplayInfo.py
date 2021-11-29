@@ -1,6 +1,6 @@
-from py4j.java_gateway import get_field
+from .Abstract import AIInterface
 
-class DisplayInfo(object):
+class DisplayInfo(AIInterface):
     def __init__(self, gateway):
         self.gateway = gateway
 
@@ -98,7 +98,3 @@ class DisplayInfo(object):
                 previousPixel = currentPixel
 
         return -1
-
-    # This part is mandatory
-    class Java:
-        implements = ["aiinterface.AIInterface"]

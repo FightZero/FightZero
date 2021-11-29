@@ -1,6 +1,6 @@
-from py4j.java_gateway import get_field
+from .Abstract import AIInterface
 
-class KickAI(object):
+class KickAI(AIInterface):
     def __init__(self, gateway):
         self.gateway = gateway
         
@@ -52,8 +52,3 @@ class KickAI(object):
 
         # Just spam kick
         self.cc.commandCall("B")
-                        
-    # This part is mandatory
-    class Java:
-        implements = ["aiinterface.AIInterface"]
-        

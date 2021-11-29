@@ -1,28 +1,24 @@
+import os
+import psutil
 import argparse
-from py4j.java_gateway import JavaGateway, GatewayParameters, CallbackServerParameters, get_field
-from KickAI import KickAI
-from DisplayInfo import DisplayInfo
+from py4j.java_gateway import JavaGateway, GatewayParameters, CallbackServerParameters
+from py4j.protocol import Py4JError
+from src.Agents.KickAI import KickAI
 
-def run(args, gateway):
-    p1 = KickAI(gateway)
-    p2 = DisplayInfo(gateway)
+def run(args, gateway: JavaGateway):
     manager = gateway.entry_point
-    manager.registerAI(p1.__class__.__name__, p1)
-    manager.registerAI(p2.__class__.__name__, p2)
+    manager.registerAI("KickAIPython", KickAI(gateway))
 
-    game = manager.createGame("ZEN", "ZEN",
-                                  p1.__class__.__name__,
-                                  p2.__class__.__name__,
-                                  args.number)
+    game = manager.createGame("ZEN", "ZEN", "KickAIPython", "MctsAi", args.number)
     manager.runGame(game)
 
 def connect(args):
     gateway = JavaGateway(gateway_parameters=GatewayParameters(port=args.port), callback_server_parameters=CallbackServerParameters())
     return gateway
 
-def disconnect(gateway):
-	gateway.close_callback_server()
-	gateway.close()
+def disconnect(gateway: JavaGateway):
+    gateway.close(close_callback_server_connections=True)
+    gateway.shutdown()
 
 if __name__=="__main__":
     parser = argparse.ArgumentParser()
@@ -33,9 +29,19 @@ if __name__=="__main__":
 
     gateway = connect(args)
 
+    pid = os.getpid()
+    prog = psutil.Process(pid)
+
+    print("="*20)
+    print("Starting Game")
+    print("="*20)
     try:
         run(args, gateway)
-    except Exception as e:
+    except Py4JError as e:
         print(e)
     finally:
         disconnect(gateway)
+        print("="*20)
+        print("Game Stopped")
+        print("="*20)
+        prog.terminate()
