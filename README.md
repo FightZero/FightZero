@@ -24,6 +24,19 @@ Learn to play fighting games from zero knowledge
    python main.py --train
    ```
 
+Command-line Arguments
+```cmd
+> python .\main.py --help
+usage: main.py [-h] [-n NUMBER] [-p PORT] [--train]
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -n NUMBER, --number NUMBER
+                        Number of rounds to play
+  -p PORT, --port PORT  Game server port
+  --train               Run in training mode (default is simulation)
+```
+
 ------
 
 For more information about the game, please visit [FightingIce](https://www.ice.ci.ritsumei.ac.jp/~ftgaic/index-2.html) and its GitHub [repo](https://github.com/TeamFightingICE/FightingICE)
