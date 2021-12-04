@@ -96,6 +96,7 @@ class PPO(object):
         self.lr_actor = lr_actor
         self.lr_critic = lr_critic
         self.training = train
+        self.epoch_count = 0
 
         # create buffer
         self.buffer = PPOBuffer()
@@ -143,7 +144,7 @@ class PPO(object):
         self.AC.load_state_dict(torch.load(filename, map_location=lambda storage, _: storage))
         self.AC_saved.load_state_dict(torch.load(filename, map_location=lambda storage, _: storage))
 
-    def train(self):
+    def train(self, writer):
         """
         Update policy
         """
@@ -164,8 +165,6 @@ class PPO(object):
         old_states = torch.squeeze(torch.stack(self.buffer.states, dim=0)).detach().to(self.device)
         old_actions = torch.squeeze(torch.stack(self.buffer.actions, dim=0)).detach().to(self.device)
         old_logprobs = torch.squeeze(torch.stack(self.buffer.logprobs, dim=0)).detach().to(self.device)
-        # set tensorboard writer
-        writer = SummaryWriter("logging/PPO")
         # start training
         self.AC.train()
         for epoch in range(self.num_epochs):
@@ -188,11 +187,11 @@ class PPO(object):
             loss.mean().backward()
             self.optim.step()
             # log in tensorboard
-            writer.add_scalar("Loss", loss.cpu().detach().mean().item(), epoch)
-            writer.add_scalar("Ratios", ratios.cpu().detach().mean().item(), epoch)
-            writer.add_scalar("Surr1", surr1.cpu().detach().mean().item(), epoch)
-            writer.add_scalar("Surr2", surr2.cpu().detach().mean().item(), epoch)
-        writer.close()
+            writer.add_scalar("Loss", loss.cpu().detach().mean().item(), self.epoch_count)
+            writer.add_scalar("Ratios", ratios.cpu().detach().mean().item(), self.epoch_count)
+            writer.add_scalar("Surr1", surr1.cpu().detach().mean().item(), self.epoch_count)
+            writer.add_scalar("Surr2", surr2.cpu().detach().mean().item(), self.epoch_count)
+            self.epoch_count += 1
         self.AC.eval()
         # save weights after training
         self.AC_saved.load_state_dict(self.AC.state_dict())
