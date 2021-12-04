@@ -187,10 +187,10 @@ class PPO(object):
             loss.mean().backward()
             self.optim.step()
             # log in tensorboard
-            writer.add_scalar("Loss", loss.cpu().detach().mean().item(), self.epoch_count)
-            writer.add_scalar("Ratios", ratios.cpu().detach().mean().item(), self.epoch_count)
-            writer.add_scalar("Surr1", surr1.cpu().detach().mean().item(), self.epoch_count)
-            writer.add_scalar("Surr2", surr2.cpu().detach().mean().item(), self.epoch_count)
+            writer.add_scalar("PPO/Loss", loss.cpu().detach().mean().item(), self.epoch_count)
+            writer.add_scalar("PPO/Ratios", ratios.cpu().detach().mean().item(), self.epoch_count)
+            writer.add_scalar("PPO/Surr1", surr1.cpu().detach().mean().item(), self.epoch_count)
+            writer.add_scalar("PPO/Surr2", surr2.cpu().detach().mean().item(), self.epoch_count)
             self.epoch_count += 1
         self.AC.eval()
         # save weights after training
