@@ -1,3 +1,5 @@
 FTG4.50/*
 !.gitkeep
 **pycache**
+logging/*
+*.pt
