@@ -91,6 +91,7 @@ class Actions:
         self.actions_digits_useful = [
             i for i in range(self.count) if i not in self.actions_digits_useless
         ]
+        self.count_useful = len(self.actions_digits_useful)
         self.actions_digits_air = [
             self.actions_map[m] for m in [
                 "AIR_GUARD",
