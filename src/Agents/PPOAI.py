@@ -1,5 +1,6 @@
 # implementation of PPO AI
 import os
+import shutil
 from typing import List, Tuple
 from torch.utils.tensorboard.writer import SummaryWriter
 from .Abstract import AIInterface
@@ -45,9 +46,9 @@ class PPOAI(AIInterface):
         )
         # remove previous log files
         if os.path.exists(os.path.join("logging", "PPO")):
-            os.rmdir(os.path.join("logging", "PPO"))
+            shutil.rmtree(os.path.join("logging", "PPO"))
         if os.path.exists(os.path.join("logging", "PPOAI")):
-            os.rmdir(os.path.join("logging", "PPOAI"))
+            shutil.rmtree(os.path.join("logging", "PPOAI"))
         
     def initialize(self, gameData, isPlayerOne):
         # set command center
@@ -113,7 +114,7 @@ class PPOAI(AIInterface):
             # if meet training step, train
             if self.training_steps_count % self.training_steps == 0:
                 print("PPO Training")
-                self.model.train()
+                self.model.train(self.writer)
         # execute action
         self.command.commandCall(action)
 
@@ -134,7 +135,7 @@ class PPOAI(AIInterface):
         if self.training:
             self.model.update(self.getReward(), True)
             print("PPO Training")
-            self.model.train()
+            self.model.train(self.writer)
             self.training_steps_count = 0
         print("Round Ended")
     
