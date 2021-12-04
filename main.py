@@ -1,15 +1,19 @@
 import os
 import psutil
 import argparse
+import traceback
 from py4j.java_gateway import JavaGateway, GatewayParameters, CallbackServerParameters
 from py4j.protocol import Py4JError
+from src.Agents.PPOAI import PPOAI
 from src.Agents.KickAI import KickAI
 
 def run(args, gateway: JavaGateway):
     manager = gateway.entry_point
-    manager.registerAI("KickAIPython", KickAI(gateway))
+    manager.registerAI("PPOPython", PPOAI(gateway, train=args.train))
+    # manager.registerAI("KickAIPython", KickAI(gateway))
 
-    game = manager.createGame("ZEN", "ZEN", "KickAIPython", "MctsAi", args.number)
+    game = manager.createGame("ZEN", "ZEN", "PPOPython", "MctsAi", args.number)
+    # game = manager.createGame("ZEN", "ZEN", "KickAI", "MctsAi", args.number)
     manager.runGame(game)
 
 def connect(args):
@@ -24,6 +28,7 @@ if __name__=="__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-n", "--number", type=int, help="Number of rounds to play", default=2)
     parser.add_argument("-p", "--port", type=int, help="Game server port", default=4242)
+    parser.add_argument("--train", help="Run in training mode (default is simulation)", action="store_true", default=False)
 
     args = parser.parse_args()
 
@@ -37,8 +42,10 @@ if __name__=="__main__":
     print("="*20)
     try:
         run(args, gateway)
-    except Py4JError as e:
-        print(e)
+    except Py4JError:
+        print(traceback.format_exc())
+    except Exception:
+        print(traceback.format_exc())
     finally:
         disconnect(gateway)
         print("="*20)

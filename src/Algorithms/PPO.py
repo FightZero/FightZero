@@ -4,6 +4,7 @@ import torch
 import torch.nn as nn
 from torch.optim import Adam
 from torch.distributions import Categorical
+from torch.utils.tensorboard.writer import SummaryWriter
 from typing import Tuple
 
 # this class implements an actor critic model with linear networks
@@ -82,18 +83,19 @@ class PPOBuffer:
 
 
 # this class implements PPO model
-class PPO:
+class PPO(object):
     def __init__(self, 
         state_dimension, action_dimension,
         lr_actor, lr_critic,
         num_epochs, discount,
-        eps_clip
+        eps_clip, train
     ):
         self.discount = discount
         self.num_epochs = num_epochs
         self.eps_clip = eps_clip
         self.lr_actor = lr_actor
         self.lr_critic = lr_critic
+        self.training = train
 
         # create buffer
         self.buffer = PPOBuffer()
@@ -109,6 +111,7 @@ class PPO:
         # set saved model
         self.AC_saved = ActorCritic(state_dimension, action_dimension).to(self.device)
         self.AC_saved.load_state_dict(self.AC.state_dict())
+        self.AC_saved.eval()
         # set loss function
         self.loss = nn.MSELoss()
 
@@ -121,9 +124,10 @@ class PPO:
             state = torch.FloatTensor(state).to(self.device)
             action, logprob = self.AC_saved.action(state)
         # store into buffer
-        self.buffer.states.append(state)
-        self.buffer.actions.append(action)
-        self.buffer.logprobs.append(logprob)
+        if self.training:
+            self.buffer.states.append(state)
+            self.buffer.actions.append(action)
+            self.buffer.logprobs.append(logprob)
         return action.cpu().item()
 
     def save(self, filename):
@@ -139,27 +143,32 @@ class PPO:
         self.AC.load_state_dict(torch.load(filename, map_location=lambda storage, _: storage))
         self.AC_saved.load_state_dict(torch.load(filename, map_location=lambda storage, _: storage))
 
-    def update(self):
+    def train(self):
         """
         Update policy
         """
+        if not self.training: return
         rewards = []
         reward_disc = 0.0
-        for reward, is_terminal in zip(reversed(self.buffer.rewards, self.buffer.is_terminals)):
+        for reward, is_terminal in zip(reversed(self.buffer.rewards), reversed(self.buffer.is_terminals)):
             # if is terminal state, set reward to 0
             if is_terminal:
                 reward_disc = 0.0
-            reward_disc = reward + (self.gamma * reward_disc)
+            reward_disc = reward + (self.discount * reward_disc)
             rewards.append(reward_disc)
         # normalize the rewards
-        rewards = torch.FloatTensor(reversed(rewards)).to(self.device)
+        rewards = rewards[-len(self.buffer.states):]
+        rewards = torch.FloatTensor(list(reversed(rewards))).to(self.device)
         rewards = (rewards - rewards.mean()) / (rewards.std() + 1e-7)
         # convert list to tensor
         old_states = torch.squeeze(torch.stack(self.buffer.states, dim=0)).detach().to(self.device)
         old_actions = torch.squeeze(torch.stack(self.buffer.actions, dim=0)).detach().to(self.device)
         old_logprobs = torch.squeeze(torch.stack(self.buffer.logprobs, dim=0)).detach().to(self.device)
+        # set tensorboard writer
+        writer = SummaryWriter("logging/PPO")
         # start training
-        for _ in range(self.num_epochs):
+        self.AC.train()
+        for epoch in range(self.num_epochs):
             # get critics
             entropy, logprob, critics = self.AC.evaluate(old_states, old_actions)
             # match state_values tensor dimensions with rewards tensor
@@ -178,7 +187,22 @@ class PPO:
             self.optim.zero_grad()
             loss.mean().backward()
             self.optim.step()
+            # log in tensorboard
+            writer.add_scalar("Loss", loss.cpu().detach().mean().item(), epoch)
+            writer.add_scalar("Ratios", ratios.cpu().detach().mean().item(), epoch)
+            writer.add_scalar("Surr1", surr1.cpu().detach().mean().item(), epoch)
+            writer.add_scalar("Surr2", surr2.cpu().detach().mean().item(), epoch)
+        writer.close()
+        self.AC.eval()
         # save weights after training
         self.AC_saved.load_state_dict(self.AC.state_dict())
         # clear buffer
         self.buffer.reset()
+
+    def update(self, reward, is_terminal):
+        """
+        Update buffer
+        """
+        if not self.training: return
+        self.buffer.rewards.append(reward)
+        self.buffer.is_terminals.append(is_terminal)
