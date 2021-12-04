@@ -23,6 +23,10 @@ Learn to play fighting games from zero knowledge
    ```cmd
    python main.py --train
    ```
+   And launch game server with:
+   ```cmd
+   java -cp "FightingICE.jar;lib/*;lib/lwjgl/*;lib/natives/windows/*" Main --py4j --limithp 400 400 --mute --fastmode --disable-window
+   ```
 
 Command-line Arguments
 ```cmd
