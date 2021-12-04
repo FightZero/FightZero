@@ -19,6 +19,10 @@ Learn to play fighting games from zero knowledge
    ```cmd
    python main.py
    ```
+6. For training AI:
+   ```cmd
+   python main.py --train
+   ```
 
 ------
 
