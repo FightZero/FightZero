@@ -26,6 +26,9 @@ class PPOAI(AIInterface):
         self.reward_sum = 0
         self.sim_count = 0
         self.initialized = False
+        self.num_win = 0
+        self.num_lose = 0
+        self.game_count = 0
         self.states_map = {
             self.gateway.jvm.enumerate.State.AIR    : 0,
             self.gateway.jvm.enumerate.State.CROUCH : 1,
@@ -105,8 +108,8 @@ class PPOAI(AIInterface):
         # get reward
         reward = self.getReward()
         self.reward_sum += reward
-        self.writer.add_scalar("Reward", reward, self.sim_count)
-        self.writer.add_scalar("Reward Accumulated", self.reward_sum, self.sim_count)
+        self.writer.add_scalar("PPOAI/Reward", reward, self.sim_count)
+        self.writer.add_scalar("PPOAI/Reward Accumulated", self.reward_sum, self.sim_count)
         self.sim_count += 1
         # if training, get next observation and train
         if self.training:
@@ -128,6 +131,8 @@ class PPOAI(AIInterface):
             if self.training:
                 self.model.save(self.checkpoint_name)
             self.writer.close()
+        self.writer.add_scalar("PPOAI/Win Count", self.num_win, self.game_count)
+        self.game_count += 1
         print("Game ended")
 
     def roundEnd(self, p1Hp, p2Hp, frames):
@@ -137,6 +142,17 @@ class PPOAI(AIInterface):
             print("PPO Training")
             self.model.train(self.writer)
             self.training_steps_count = 0
+        # update win/lose count
+        if self.player:
+            if p1Hp >= p2Hp:
+                self.num_win += 1
+            else:
+                self.num_lose += 1
+        else:
+            if p1Hp <= p2Hp:
+                self.num_win += 1
+            else:
+                self.num_lose += 1
         print("Round Ended")
     
     def observe(self) -> List:
