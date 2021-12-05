@@ -14,7 +14,7 @@ def run(args, gateway: JavaGateway):
 
     # Good Candidates:
     # 1. MctsAi
-    # 2. BlackMambda
+    # 2. BlackMamba
     # 3. FalzAI
     # 4. JayBot_GM
     # 5. LGIST_Bot

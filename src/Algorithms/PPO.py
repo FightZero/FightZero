@@ -284,14 +284,21 @@ class PPO(object):
         """
         Save current network to file path
         """
-        torch.save(self.AC_saved.state_dict(), filename)
+        torch.save((
+            self.AC_saved.state_dict(),
+            self.optim_actor.state_dict(),
+            self.optim_critic.state_dict(),
+        ), filename)
 
     def load(self, filename):
         """
         Load network from file path
         """
-        self.AC.load_state_dict(torch.load(filename, map_location=lambda storage, _: storage))
-        self.AC_saved.load_state_dict(torch.load(filename, map_location=lambda storage, _: storage))
+        states, opt1, opt2 = torch.load(filename, map_location=lambda storage, _: storage)
+        self.AC.load_state_dict(states)
+        self.AC_saved.load_state_dict(states)
+        self.optim_actor.load_state_dict(opt1)
+        self.optim_critic.load_state_dict(opt2)
 
     def train(self, writer : SummaryWriter):
         """
