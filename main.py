@@ -9,7 +9,7 @@ from src.Agents.KickAI import KickAI
 
 def run(args, gateway: JavaGateway):
     manager = gateway.entry_point
-    manager.registerAI("PPOPython", PPOAI(gateway, train=args.train))
+    manager.registerAI("PPOPython", PPOAI(gateway, gameRounds=args.number, train=args.train))
     # manager.registerAI("KickAIPython", KickAI(gateway))
 
     # Good Candidates:

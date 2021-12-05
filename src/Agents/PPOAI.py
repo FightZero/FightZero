@@ -12,16 +12,19 @@ class PPOAI(AIInterface):
         self.gateway = gateway
         # set whether in training mode
         self.training = train
-        self.training_steps = 3e3
-        self.training_steps_count = 0
+        # self.training_steps = 3e3
+        # self.training_steps_count = 0
         # set parameters
         self.actions = Actions()
-        self.state_dimensions = 149 # NOTE: set correct number of dimensions here
+        self.state_dimensions = 147 # NOTE: set correct number of dimensions here
         self.action_dimensions = self.actions.count # 56
-        self.lr = 1e-4
+        self.lr_actor = 1e-4
+        self.lr_critic = 3e-4
         self.train_epochs = 100
         self.discount = 0.99
         self.eps_clip = 0.2
+        self.batchsize = 128
+        self.max_grad_norm = 0.5
         self.reward_sum = 0
         self.sim_count = 0
         self.num_win = 0
@@ -33,10 +36,12 @@ class PPOAI(AIInterface):
         self.model = PPO(
             self.state_dimensions,
             self.action_dimensions,
-            self.lr,
+            self.lr_actor, self.lr_critic,
             self.train_epochs,
             self.discount,
             self.eps_clip,
+            self.batchsize,
+            self.max_grad_norm,
             self.training
         )
         # set session name
@@ -85,8 +90,8 @@ class PPOAI(AIInterface):
         # if not in control, skip
         # if not self.isControl:
         #     
-        if self.training:
-            self.training_steps_count += 1
+        # if self.training:
+        #     self.training_steps_count += 1
         # empty actions
         self.key.empty()
         self.command.skillCancel()
@@ -105,11 +110,11 @@ class PPOAI(AIInterface):
         # if training, get next observation and train
         if self.training:
             self.model.update(reward, False)
-            # if meet training step, train
-            if self.training_steps_count % self.training_steps == 0:
-                print("PPO Training")
-                self.model.train(self.writer)
-                self.training_steps_count = 0
+            # # if meet training step, train
+            # if self.training_steps_count % self.training_steps == 0:
+            #     print("PPO Training")
+            #     self.model.train(self.writer)
+            #     self.training_steps_count = 0
         # execute action
         self.command.commandCall(action)
 
@@ -121,9 +126,8 @@ class PPOAI(AIInterface):
         self.game_count += 1
         # if is training, save current model
         if self.training:
-            if self.game_count >= self.game_total:
-                print("PPO Training")
-                self.model.train(self.writer)
+            print("PPO Training")
+            self.model.train(self.writer)
             self.model.save(self.checkpoint_name)
         self.writer.add_scalar("PPOAI/Win Count", self.num_win, self.game_count)
         self.writer.add_scalar("PPOAI/Lose Count", self.num_lose, self.game_count)
@@ -185,8 +189,8 @@ class PPOAI(AIInterface):
         obs = []
         # information of me
         obs.append(me.getHp() / 400.0)
-        obs.append(me.getCenterX()) # get position X
-        obs.append(me.getCenterY()) # get position Y
+        obs.append((me.getLeft() + me.getRight()) * 0.5) # get position X
+        obs.append((me.getBottom() + me.getTop()) * 0.5) # get position Y
         obs.append(me.getEnergy() / 300.0) # get energy
         obs.append(abs(me.getSpeedX())) # get horizontal speed
         obs.append(abs(me.getSpeedY())) # get vertical speed
@@ -197,8 +201,8 @@ class PPOAI(AIInterface):
         obs.append(me.getState().ordinal()) # get state STAND / CROUCH/ AIR / DOWN
         # information of opponent
         obs.append(opp.getHp() / 400.0)
-        obs.append(opp.getCenterX())
-        obs.append(opp.getCenterY())
+        obs.append((opp.getLeft() + opp.getRight()) * 0.5)
+        obs.append((opp.getBottom() + opp.getTop()) * 0.5)
         obs.append(opp.getEnergy() / 300.0)
         obs.append(abs(opp.getSpeedX()))
         obs.append(abs(opp.getSpeedY()))
@@ -208,29 +212,24 @@ class PPOAI(AIInterface):
         obs.append(int(opp.isHitConfirm()))
         obs.append(opp.getState().ordinal())
         # for attacks
-        attMe = me.getAttack()
-        attOpp = opp.getAttack()
-        # attack of me
-        obs.append(attMe.getAttackType())
-        obs.append(attMe.getGiveEnergy())
-        obs.append(abs(attMe.getSpeedX()))
-        obs.append(abs(attMe.getSpeedY()))
-        obs.append(int(attMe.isProjectile()))
-        # attack of opp
-        obs.append(attOpp.getAttackType())
-        obs.append(attOpp.getGiveEnergy())
-        obs.append(abs(attOpp.getSpeedX()))
-        obs.append(abs(attOpp.getSpeedY()))
-        obs.append(int(attOpp.isProjectile()))
-        # for hit areas
-        areaMe = attMe.getCurrentHitArea()
-        areaOpp = attOpp.getCurrentHitArea()
-        obs.append((areaMe.getLeft() + areaMe.getRight()) * 0.5)
-        obs.append((areaMe.getTop() + areaMe.getBottom()) * 0.5)
-        obs.append((areaOpp.getLeft() + areaOpp.getRight()) * 0.5)
-        obs.append((areaOpp.getTop() + areaOpp.getBottom()) * 0.5)
+        attMe = frameData.getProjectilesByP1() if self.player else frameData.getProjectilesByP2()
+        attOpp = frameData.getProjectilesByP2() if self.player else frameData.getProjectilesByP1()
+        attMeObs = [0.0] * 6
+        attOppObs = [0.0] * 6
+        for i, attack in enumerate(attMe):
+            hitarea = attack.getCurrentHitArea()
+            attMeObs[i * 3] = attack.getHitDamage()
+            attMeObs[i * 3 + 1] = (hitarea.getLeft() + hitarea.getRight()) * 0.5
+            attMeObs[i * 3 + 2] = (hitarea.getBottom() + hitarea.getTop()) * 0.5
+        for i, attack in enumerate(attOpp):
+            hitarea = attack.getCurrentHitArea()
+            attOppObs[i * 3] = attack.getHitDamage()
+            attOppObs[i * 3 + 1] = (hitarea.getLeft() + hitarea.getRight()) * 0.5
+            attOppObs[i * 3 + 2] = (hitarea.getBottom() + hitarea.getTop()) * 0.5
+        obs.extend(attMeObs)
+        obs.extend(attOppObs)
         # remaining time
-        obs.append(frameData.getRemainingTimeMilliseconds() / 1000.0)
+        obs.append(frameData.getFramesNumber() / 1000.0)
         # onehot action vector
         actionMe = [0.0] * self.actions.count
         actionMe[me.getAction().ordinal()] = 1.0
