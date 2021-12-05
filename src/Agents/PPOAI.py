@@ -13,7 +13,7 @@ class PPOAI(AIInterface):
         self.gateway = gateway
         # set whether in training mode
         self.training = train
-        self.training_steps = 3000
+        self.training_steps = 4000
         self.training_steps_count = 0
         self.frame_skip = frameSkip
         # set parameters
@@ -22,7 +22,7 @@ class PPOAI(AIInterface):
         self.action_dimensions = self.actions.count # 56
         self.lr_actor = 1e-4
         self.lr_critic = 3e-4
-        self.train_epochs = 120
+        self.train_epochs = 100
         self.discount = 0.99
         self.eps_clip = 0.2
         self.batchsize = 128
