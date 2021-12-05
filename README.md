@@ -31,7 +31,7 @@ Learn to play fighting games from zero knowledge
 Command-line Arguments
 ```cmd
 > python .\main.py --help
-usage: main.py [-h] [-n NUMBER] [-p PORT] [--train]
+usage: main.py [-h] [-n NUMBER] [-p PORT] [--train] [--skip]
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -39,6 +39,7 @@ optional arguments:
                         Number of rounds to play
   -p PORT, --port PORT  Game server port
   --train               Run in training mode (default is simulation)
+  --skip                Whether to skip frames (default is false)
 ```
 
 ------

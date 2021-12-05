@@ -27,7 +27,7 @@ if __name__=="__main__":
     
     max_eq_len = 400
     time_step = 0
-    update_timestep = 1000
+    update_timestep = 4000
     render_timestep = int(500)
 
     writer = SummaryWriter("logging/test")

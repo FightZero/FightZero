@@ -2,19 +2,20 @@
 import os
 import torch
 from datetime import datetime
-from typing import List, Tuple
+from typing import Tuple
 from torch.utils.tensorboard.writer import SummaryWriter
 from .Abstract import AIInterface
 from ..Algorithms.PPO import PPO
 from ..Utils.Actions import Actions
 
 class PPOAI(AIInterface):
-    def __init__(self, gateway, gameRounds=2, train=False):
+    def __init__(self, gateway, gameRounds=2, train=False, frameSkip=False):
         self.gateway = gateway
         # set whether in training mode
         self.training = train
-        self.training_steps = 1000
+        self.training_steps = 4000
         self.training_steps_count = 0
+        self.frame_skip = frameSkip
         # set parameters
         self.actions = Actions()
         self.state_dimensions = 147 # NOTE: set correct number of dimensions here
@@ -86,15 +87,18 @@ class PPOAI(AIInterface):
         # if round end or just started, do not process
         if self.frameData.getEmptyFlag() or self.frameData.getRemainingTime() <= 0:
             return
-        # if there is a skill not executed yet, skip
-        if self.command.getSkillFlag():
-            self.key = self.command.getSkillKey()
-            return 
+        if self.frame_skip:
+            # if there is a skill not executed yet, skip
+            if self.command.getSkillFlag():
+                self.key = self.command.getSkillKey()
+                return
+            if not self.isControl:
+                return
+            # empty actions
+            self.key.empty()
+            self.command.skillCancel()
         if self.training:
             self.training_steps_count += 1
-        # empty actions
-        self.key.empty()
-        self.command.skillCancel()
         # get observation
         state = self.observe()
         # get next action
@@ -118,6 +122,8 @@ class PPOAI(AIInterface):
                 self.training_steps_count = 0
         # execute action
         self.command.commandCall(action)
+        if not self.frame_skip:
+            self.key = self.command.getSkillKey()
 
     def input(self):
         # return chosen action
@@ -126,11 +132,10 @@ class PPOAI(AIInterface):
     def close(self):
         self.game_count += 1
         # if is training, save current model
-        if self.training:
+        if self.training and self.game_count >= self.game_total:
             print("PPO Training")
             self.model.train(self.writer)
-            self.training_steps_count = 0
-            self.model.save(self.checkpoint_name)
+        self.model.save(self.checkpoint_name)
         self.writer.add_scalar("PPOAI/Num Win", self.num_win, self.game_count)
         self.writer.add_scalar("PPOAI/Num Lose", self.num_lose, self.game_count)
         self.writer.close()
@@ -140,35 +145,35 @@ class PPOAI(AIInterface):
 
     def roundEnd(self, p1Hp, p2Hp, frames):
         # update win/lose count
-        self.model.action(self.observe())
-        self.model.update(0.0, True)
+        # self.model.action(self.observe())
+        self.model.update(0, True)
         if self.player:
             if p1Hp >= p2Hp:
                 self.num_win += 1
                 # self.model.update(1.0, True)
-                self.reward_sum += 1.0
-                self.writer.add_scalar("PPOAI/Reward", 1.0, self.sim_count)
+                # self.reward_sum += 1.0
+                # self.writer.add_scalar("PPOAI/Reward", 1.0, self.sim_count)
                 print("Round End, Win!")
             else:
                 self.num_lose += 1
                 # self.model.update(-1.0, True)
-                self.reward_sum += -1.0
-                self.writer.add_scalar("PPOAI/Reward", -1.0, self.sim_count)
+                # self.reward_sum += -1.0
+                # self.writer.add_scalar("PPOAI/Reward", -1.0, self.sim_count)
                 print("Round End, Lose!")
         else:
             if p1Hp <= p2Hp:
                 self.num_win += 1
                 # self.model.update(1.0, True)
-                self.reward_sum += 1.0
-                self.writer.add_scalar("PPOAI/Reward", 1.0, self.sim_count)
+                # self.reward_sum += 1.0
+                # self.writer.add_scalar("PPOAI/Reward", 1.0, self.sim_count)
                 print("Round End, Win!")
             else:
                 self.num_lose += 1
                 # self.model.update(-1.0, True)
-                self.reward_sum += -1.0
-                self.writer.add_scalar("PPOAI/Reward", -1.0, self.sim_count)
+                # self.reward_sum += -1.0
+                # self.writer.add_scalar("PPOAI/Reward", -1.0, self.sim_count)
                 print("Round End, Lose!")
-        self.writer.add_scalar("PPOAI/Reward Accumulated", self.reward_sum, self.sim_count)
+        # self.writer.add_scalar("PPOAI/Reward Accumulated", self.reward_sum, self.sim_count)
         self.writer.add_scalar("PPOAI/Reward Episodic", self.reward_eps, self.round_count)
         self.reward_eps = 0
         self.round_count += 1
@@ -196,7 +201,7 @@ class PPOAI(AIInterface):
         # information of me
         obs.append(me.getHp() / 400.0)
         obs.append((me.getLeft() + me.getRight()) * 0.5 / 960.0) # get position X
-        obs.append((me.getBottom() + me.getTop()) * 0.5 / 960.0) # get position Y
+        obs.append((me.getBottom() + me.getTop()) * 0.5 / 640.0) # get position Y
         obs.append(me.getEnergy() / 300.0) # get energy
         obs.append(int(me.getSpeedX() >= 0.0))
         obs.append(abs(me.getSpeedX()) / 15.0) # get horizontal speed
@@ -208,7 +213,7 @@ class PPOAI(AIInterface):
         # information of opponent
         obs.append(opp.getHp() / 400.0)
         obs.append((opp.getLeft() + opp.getRight()) * 0.5 / 960.0)
-        obs.append((opp.getBottom() + opp.getTop()) * 0.5 / 960.0)
+        obs.append((opp.getBottom() + opp.getTop()) * 0.5 / 640.0)
         obs.append(opp.getEnergy() / 300.0)
         obs.append(int(opp.getSpeedX() >= 0.0))
         obs.append(abs(opp.getSpeedX()) / 15.0)
@@ -226,12 +231,12 @@ class PPOAI(AIInterface):
             hitarea = attack.getCurrentHitArea()
             attMeObs[i * 3] = attack.getHitDamage() / 200.0
             attMeObs[i * 3 + 1] = (hitarea.getLeft() + hitarea.getRight()) * 0.5 / 960.0
-            attMeObs[i * 3 + 2] = (hitarea.getBottom() + hitarea.getTop()) * 0.5 / 960.0
+            attMeObs[i * 3 + 2] = (hitarea.getBottom() + hitarea.getTop()) * 0.5 / 640.0
         for i, attack in enumerate(attOpp):
             hitarea = attack.getCurrentHitArea()
             attOppObs[i * 3] = attack.getHitDamage() / 200.0
             attOppObs[i * 3 + 1] = (hitarea.getLeft() + hitarea.getRight()) * 0.5 / 960.0
-            attOppObs[i * 3 + 2] = (hitarea.getBottom() + hitarea.getTop()) * 0.5 / 960.0
+            attOppObs[i * 3 + 2] = (hitarea.getBottom() + hitarea.getTop()) * 0.5 / 640.0
         obs.extend(attMeObs)
         obs.extend(attOppObs)
         # remaining time
