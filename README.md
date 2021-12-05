@@ -9,7 +9,7 @@ Learn to play fighting games from zero knowledge
 2. Download [FightingIce](https://www.ice.ci.ritsumei.ac.jp/~ftgaic/index-2.html) version 4.5 and extract to `FTG4.50`  
 3. Enter `FTG4.50` and run command (for Windows):
    ```cmd
-   java -cp "FightingICE.jar;lib/*;lib/lwjgl/*;lib/natives/windows/*" Main --py4j --limithp 400 400
+   java -Xms1024m -Xmx1024m -cp "FightingICE.jar;lib/*;lib/lwjgl/*;lib/natives/windows/*;data/ai/*" Main --py4j --limithp 400 400 --inverted-player 1
    ```
 4. Install python required packages:
    ```cmd
@@ -25,7 +25,7 @@ Learn to play fighting games from zero knowledge
    ```
    And launch game server with:
    ```cmd
-   java -cp "FightingICE.jar;lib/*;lib/lwjgl/*;lib/natives/windows/*" Main --py4j --limithp 400 400 --mute --fastmode --disable-window
+   java -Xms1024m -Xmx1024m -cp "FightingICE.jar;lib/*;lib/lwjgl/*;lib/natives/windows/*;data/ai/*" Main --py4j --limithp 400 400 --mute --fastmode --inverted-player 1 --disable-window
    ```
 
 Command-line Arguments
