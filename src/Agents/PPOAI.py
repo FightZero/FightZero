@@ -9,12 +9,13 @@ from ..Algorithms.PPO import PPO
 from ..Utils.Actions import Actions
 
 class PPOAI(AIInterface):
-    def __init__(self, gateway, gameRounds=2, train=False):
+    def __init__(self, gateway, gameRounds=2, train=False, frameSkip=False):
         self.gateway = gateway
         # set whether in training mode
         self.training = train
         self.training_steps = 1500
         self.training_steps_count = 0
+        self.frame_skip = frameSkip
         # set parameters
         self.actions = Actions()
         self.state_dimensions = 147 # NOTE: set correct number of dimensions here
@@ -86,15 +87,18 @@ class PPOAI(AIInterface):
         # if round end or just started, do not process
         if self.frameData.getEmptyFlag() or self.frameData.getRemainingTime() <= 0:
             return
-        # if there is a skill not executed yet, skip
-        if self.command.getSkillFlag():
-            self.key = self.command.getSkillKey()
-            return 
+        if self.frame_skip:
+            # if there is a skill not executed yet, skip
+            if self.command.getSkillFlag():
+                self.key = self.command.getSkillKey()
+                return
+            if not self.isControl:
+                return
+            # empty actions
+            self.key.empty()
+            self.command.skillCancel()
         if self.training:
             self.training_steps_count += 1
-        # empty actions
-        self.key.empty()
-        self.command.skillCancel()
         # get observation
         state = self.observe()
         # get next action
@@ -118,6 +122,8 @@ class PPOAI(AIInterface):
                 self.training_steps_count = 0
         # execute action
         self.command.commandCall(action)
+        if not self.frame_skip:
+            self.key = self.command.getSkillKey()
 
     def input(self):
         # return chosen action

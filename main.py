@@ -9,7 +9,8 @@ from src.Agents.KickAI import KickAI
 
 def run(args, gateway: JavaGateway):
     manager = gateway.entry_point
-    manager.registerAI("PPOPython", PPOAI(gateway, gameRounds=args.number, train=args.train))
+    manager.registerAI("PPOPython", PPOAI(gateway, gameRounds=args.number,
+        train=args.train, frameSkip=args.skip))
     # manager.registerAI("KickAIPython", KickAI(gateway))
 
     # Good Candidates:
@@ -37,6 +38,7 @@ if __name__=="__main__":
     parser.add_argument("-n", "--number", type=int, help="Number of rounds to play", default=2)
     parser.add_argument("-p", "--port", type=int, help="Game server port", default=4242)
     parser.add_argument("--train", help="Run in training mode (default is simulation)", action="store_true", default=False)
+    parser.add_argument("--skip", help="Whether to skip frames (default is false)", action="store_true", default=False)
 
     args = parser.parse_args()
 
