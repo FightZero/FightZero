@@ -17,22 +17,22 @@ class ActorCritic(nn.Module):
         # create actor network
         self.actor = nn.Sequential(
             nn.Linear(self.d_state, 512),
-            nn.Tanh(),
+            nn.LeakyReLU(),
             nn.Linear(512, 256),
-            nn.Tanh(),
+            nn.LeakyReLU(),
             nn.Linear(256, 128),
-            nn.Tanh(),
+            nn.LeakyReLU(),
             nn.Linear(128, self.d_action),
             nn.Softmax(dim=1)
         )
         # create critic network
         self.critic = nn.Sequential(
             nn.Linear(self.d_state, 512),
-            nn.Tanh(),
+            nn.LeakyReLU(),
             nn.Linear(512, 256),
-            nn.Tanh(),
+            nn.LeakyReLU(),
             nn.Linear(256, 64),
-            nn.Tanh(),
+            nn.LeakyReLU(),
             nn.Linear(64, 1)
         )
 
@@ -314,7 +314,7 @@ class PPO(object):
                 reward_disc = 0.0
             reward_disc = reward + (self.discount * reward_disc)
             rewards.insert(0, reward_disc)
-        # rewards = rewards[-len(self.buffer.states):]
+        rewards = rewards[-len(self.buffer.states):]
         # normalize the rewards
         target_values = torch.FloatTensor(rewards).to(self.device)
         target_values = (target_values - target_values.mean()) / (target_values.std() + 1e-8)
