@@ -25,6 +25,7 @@ def run(args, gateway: JavaGateway):
     # 5. LGIST_Bot
     # 6. UtalFighter
 
+
     game = manager.createGame("ZEN", "ZEN", "PPOPython", "MctsAi", args.number)
     # game = manager.createGame("ZEN", "ZEN", "KickAI", "MctsAi", args.number)
     manager.runGame(game)
