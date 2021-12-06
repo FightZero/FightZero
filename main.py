@@ -6,6 +6,7 @@ from py4j.java_gateway import JavaGateway, GatewayParameters, CallbackServerPara
 from py4j.protocol import Py4JError
 from src.Agents.PPOAI import PPOAI
 from src.Agents.PPOAI2 import PPOAI2
+from src.Agents.PPOAIBM import PPOAIBM
 from src.Agents.KickAI import KickAI
 from tmp.WinOrGoHome import WinOrGoHome
 
@@ -14,6 +15,8 @@ def run(args, gateway: JavaGateway):
     manager.registerAI("PPOPython", PPOAI(gateway, gameRounds=args.number,
         train=args.train, frameSkip=args.skip))
     manager.registerAI("PPO2Python", PPOAI2(gateway, gameRounds=args.number,
+        train=args.train, frameSkip=args.skip))
+    manager.registerAI("PPOBMPython", PPOAIBM(gateway, gameRounds=args.number,
         train=args.train, frameSkip=args.skip))
     # manager.registerAI("KickAIPython", KickAI(gateway))
 
@@ -26,7 +29,7 @@ def run(args, gateway: JavaGateway):
     # 6. UtalFighter
 
 
-    game = manager.createGame("ZEN", "ZEN", "PPOPython", "MctsAi", args.number)
+    game = manager.createGame("ZEN", "ZEN", "PPOBMPython", "MctsAi", args.number)
     # game = manager.createGame("ZEN", "ZEN", "KickAI", "MctsAi", args.number)
     manager.runGame(game)
 
