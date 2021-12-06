@@ -29,7 +29,7 @@ def run(args, gateway: JavaGateway):
     # 6. UtalFighter
 
 
-    game = manager.createGame("ZEN", "ZEN", "PPOBMPython", "MctsAi", args.number)
+    game = manager.createGame("ZEN", "ZEN", "PPOPython", "MctsAi", args.number)
     # game = manager.createGame("ZEN", "ZEN", "KickAI", "MctsAi", args.number)
     manager.runGame(game)
 

@@ -5,7 +5,7 @@ import torch.nn as nn
 from torch.optim import Adam, RMSprop
 from torch.distributions import Categorical
 from torch.utils.tensorboard.writer import SummaryWriter
-from torch.utils.data import BatchSampler, SubsetRandomSampler
+from torch.utils.data import BatchSampler, RandomSampler
 from typing import Tuple
 
 # this class implements an actor critic model with linear networks
@@ -70,7 +70,7 @@ class ActorCritic(nn.Module):
         dist = Categorical(probs=probs)
         # get distribution entropy and log probs of chosen action
         entropy = dist.entropy()
-        logprob = dist.log_prob(action)
+        logprob = dist.log_prob(action).diagonal().view(action.shape)
         # get critic value
         critics = self.critic(state)
         return entropy, logprob, critics
@@ -189,41 +189,43 @@ class PPO(object):
         # normalize the rewards
         target_values = torch.FloatTensor(rewards).to(self.device)
         target_values = (target_values - target_values.mean()) / (target_values.std() + 1e-8)
+        target_values = target_values.view(-1, 1)
         # convert list to tensor
         old_states = torch.squeeze(torch.stack(self.buffer.states[:length], dim=0)).detach().to(self.device)
-        old_actions = torch.squeeze(torch.stack(self.buffer.actions[:length], dim=0)).detach().to(self.device)
-        old_logprobs = torch.squeeze(torch.stack(self.buffer.logprobs[:length], dim=0)).detach().to(self.device)
+        old_actions = torch.squeeze(torch.stack(self.buffer.actions[:length], dim=0)).view(-1, 1).detach().to(self.device)
+        old_logprobs = torch.squeeze(torch.stack(self.buffer.logprobs[:length], dim=0)).view(-1, 1).detach().to(self.device)
         # start training
         self.AC.train()
         for _ in range(self.num_epochs):
-            # get critics
-            _, logprob, critics = self.AC.evaluate(old_states, old_actions)
-            state_values = torch.squeeze(critics)
-            # compute advantages
-            advantages = (target_values - state_values).detach()
-            # find the ratio (pi_theta / pi_theta__old)
-            ratios = torch.exp((logprob - old_logprobs))
-            # find Surrogate Loss (Clipped Surrogate Objective)
-            surr1 = ratios * advantages
-            surr2 = torch.clamp(ratios, 1 - self.eps_clip, 1 + self.eps_clip) * advantages
-            # compute actor loss
-            loss_actor = -torch.min(surr1, surr2).mean()
-            # optimize actor
-            self.optim_actor.zero_grad()
-            loss_actor.backward()
-            torch.nn.utils.clip_grad.clip_grad_norm_(self.AC.actor.parameters(), max_norm=self.max_grad_norm)
-            self.optim_actor.step()
-            # compute critic loss
-            loss_critic = self.loss(target_values, state_values)
-            self.optim_critic.zero_grad()
-            loss_critic.backward()
-            torch.nn.utils.clip_grad.clip_grad_norm_(self.AC.critic.parameters(), max_norm=self.max_grad_norm)
-            self.optim_critic.step()
-            # log in tensorboard
-            writer.add_scalar("PPO/Loss Actor", loss_actor.cpu().detach().item(), self.iter_count)
-            writer.add_scalar("PPO/Loss Critic", loss_critic.cpu().detach().mean().item(), self.iter_count)
-            writer.add_scalar("PPO/Advantage", advantages.cpu().detach().mean().item(), self.iter_count)
-            self.iter_count += 1
+            for indices in BatchSampler(RandomSampler(range(len(self.buffer.states))), batch_size=self.batch_size, drop_last=False):
+                # get critics
+                _, logprob, state_values = self.AC.evaluate(old_states[indices], old_actions[indices])
+                # state_values = torch.squeeze(critics)
+                # compute advantages
+                advantages = (target_values[indices] - state_values).detach()
+                # find the ratio (pi_theta / pi_theta__old)
+                ratios = torch.exp((logprob - old_logprobs[indices]))
+                # find Surrogate Loss (Clipped Surrogate Objective)
+                surr1 = ratios * advantages
+                surr2 = torch.clamp(ratios, 1 - self.eps_clip, 1 + self.eps_clip) * advantages
+                # compute actor loss
+                loss_actor = -torch.min(surr1, surr2).mean()
+                # optimize actor
+                self.optim_actor.zero_grad()
+                loss_actor.backward()
+                torch.nn.utils.clip_grad.clip_grad_norm_(self.AC.actor.parameters(), max_norm=self.max_grad_norm)
+                self.optim_actor.step()
+                # compute critic loss
+                loss_critic = self.loss(state_values, target_values[indices]).mean()
+                self.optim_critic.zero_grad()
+                loss_critic.backward()
+                torch.nn.utils.clip_grad.clip_grad_norm_(self.AC.critic.parameters(), max_norm=self.max_grad_norm)
+                self.optim_critic.step()
+                # log in tensorboard
+                writer.add_scalar("PPO/Loss Actor", loss_actor.cpu().detach().item(), self.iter_count)
+                writer.add_scalar("PPO/Loss Critic", loss_critic.cpu().detach().item(), self.iter_count)
+                writer.add_scalar("PPO/Advantage", advantages.cpu().detach().mean().item(), self.iter_count)
+                self.iter_count += 1
         self.AC.eval()
         # save weights after training
         self.AC_saved.load_state_dict(self.AC.state_dict())
