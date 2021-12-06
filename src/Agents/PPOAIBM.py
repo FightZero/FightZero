@@ -62,6 +62,7 @@ class PPOAIBM(AIInterface):
         self.gameData = gameData
         self.character = self.gameData.getCharacterName(self.player)
         self.simulator = self.gameData.getSimulator()
+        self.justStarted = True
         # set checkpoint file name
         self.checkpoint_name = "ppobm_" + self.character + ".pt"
         # load model if necessary
@@ -83,6 +84,7 @@ class PPOAIBM(AIInterface):
     def processing(self):
         # if round end or just started, do not process
         if self.frameData.getEmptyFlag() or self.frameData.getRemainingTime() <= 0:
+            self.justStarted = True
             return
         if self.frame_skip:
             # if there is a skill not executed yet, skip
@@ -111,7 +113,10 @@ class PPOAIBM(AIInterface):
         self.sim_count += 1
         # if training, get next observation and train
         if self.training:
-            self.model.update(reward, False)
+            if not self.justStarted:
+                self.model.update(reward, False)
+            else:
+                self.justStarted = False
             # if meet training step, train
             if self.training_steps_count % self.training_steps == 0:
                 print("PPO Training")

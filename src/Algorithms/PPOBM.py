@@ -329,14 +329,14 @@ class PPO(object):
                 reward_disc = 0.0
             reward_disc = reward + (self.discount * reward_disc)
             rewards.insert(0, reward_disc)
-        rewards = rewards[-len(self.buffer.states):]
+        length = len(rewards)
         # normalize the rewards
         target_values = torch.FloatTensor(rewards).to(self.device)
         target_values = (target_values - target_values.mean()) / (target_values.std() + 1e-8)
         # convert list to tensor
-        old_states = torch.squeeze(torch.stack(self.buffer.states, dim=0)).detach().to(self.device)
-        old_actions = torch.squeeze(torch.stack(self.buffer.actions, dim=0)).detach().to(self.device)
-        old_logprobs = torch.squeeze(torch.stack(self.buffer.logprobs, dim=0)).detach().to(self.device)
+        old_states = torch.squeeze(torch.stack(self.buffer.states[:length], dim=0)).detach().to(self.device)
+        old_actions = torch.squeeze(torch.stack(self.buffer.actions[:length], dim=0)).detach().to(self.device)
+        old_logprobs = torch.squeeze(torch.stack(self.buffer.logprobs[:length], dim=0)).detach().to(self.device)
         # start training
         self.AC.train()
         for _ in range(self.num_epochs):
