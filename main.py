@@ -5,11 +5,15 @@ import traceback
 from py4j.java_gateway import JavaGateway, GatewayParameters, CallbackServerParameters
 from py4j.protocol import Py4JError
 from src.Agents.PPOAI import PPOAI
+from src.Agents.PPOAI2 import PPOAI2
 from src.Agents.KickAI import KickAI
+from tmp.WinOrGoHome import WinOrGoHome
 
 def run(args, gateway: JavaGateway):
     manager = gateway.entry_point
     manager.registerAI("PPOPython", PPOAI(gateway, gameRounds=args.number,
+        train=args.train, frameSkip=args.skip))
+    manager.registerAI("PPO2Python", PPOAI2(gateway, gameRounds=args.number,
         train=args.train, frameSkip=args.skip))
     # manager.registerAI("KickAIPython", KickAI(gateway))
 
@@ -26,7 +30,9 @@ def run(args, gateway: JavaGateway):
     manager.runGame(game)
 
 def connect(args):
-    gateway = JavaGateway(gateway_parameters=GatewayParameters(port=args.port), callback_server_parameters=CallbackServerParameters())
+    gateway = JavaGateway(gateway_parameters=GatewayParameters(port=args.port), callback_server_parameters=CallbackServerParameters(port=0))
+    python_port = gateway.get_callback_server().get_listening_port()
+    gateway.java_gateway_server.resetCallbackClient(gateway.java_gateway_server.getCallbackClient().getAddress(), python_port)
     return gateway
 
 def disconnect(gateway: JavaGateway):

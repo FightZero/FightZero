@@ -3,3 +3,4 @@ FTG4.50/*
 **pycache**
 logging/*
 *.pt
+tmp/*

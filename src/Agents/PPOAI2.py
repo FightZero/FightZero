@@ -5,10 +5,10 @@ from datetime import datetime
 from typing import Tuple
 from torch.utils.tensorboard.writer import SummaryWriter
 from .Abstract import AIInterface
-from ..Algorithms.PPO import PPO
+from ..Algorithms.PPO2 import PPO
 from ..Utils.Actions import Actions
 
-class PPOAI(AIInterface):
+class PPOAI2(AIInterface):
     def __init__(self, gateway, gameRounds=2, train=False, frameSkip=False):
         self.gateway = gateway
         # set whether in training mode
@@ -66,13 +66,13 @@ class PPOAI(AIInterface):
         self.character = self.gameData.getCharacterName(self.player)
         self.simulator = self.gameData.getSimulator()
         # set checkpoint file name
-        self.checkpoint_name = "ppo_" + self.character + ".pt"
+        self.checkpoint_name = "ppo2_" + self.character + ".pt"
         # load model if necessary
         if os.path.exists(self.checkpoint_name) and self.game_count <= 0:
             self.model.load(self.checkpoint_name)
             print("PPO Checkpoint Loaded")
         # create session writer
-        self.writer = SummaryWriter("logging/PPOAI/" + self.writer_session)
+        self.writer = SummaryWriter("logging/PPOAI2/" + self.writer_session)
         print("AI Initialized, Mode=" + ("training" if self.training else "playing"))
         return 0
 
