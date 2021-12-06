@@ -1,0 +1,143 @@
+import os
+import psutil
+import argparse
+import traceback
+from py4j.java_gateway import JavaGateway, GatewayParameters, CallbackServerParameters
+from py4j.protocol import Py4JError
+from src.Agents.PPOAIMulti import PPOAI
+import sys
+sys.path.insert(0,"F:\\RL590Project\\FightZero\\FTG4.50\\python\\LTAI")
+from Core.model import LTAI
+sys.path.insert(0,"F:\\RL590Project\\FightZero\\FTG4.50\\python")
+from WinOrGoHome import WinOrGoHome
+import random
+from os.path import exists
+import numpy as np
+
+def run(args, AI, gateway: JavaGateway):
+    manager = gateway.entry_point
+    manager.registerAI("PPOPython", PPOAI(gateway, gameRounds=args.rounds, train=args.train))
+    # manager.registerAI("KickAIPython", KickAI(gateway))
+
+    # Good Candidates:
+    # 1. MctsAi
+    # 2. BlackMambda
+    # 3. FalzAI
+    # 4. JayBot_GM
+    # 5. LGIST_Bot
+    # 6. UtalFighter
+    
+    game = manager.createGame("ZEN", "ZEN", "PPOPython", AI, args.rounds)
+    manager.runGame(game)
+
+def connect(args):
+    gateway = JavaGateway(gateway_parameters=GatewayParameters(port=args.port), callback_server_parameters=CallbackServerParameters())
+    return gateway
+
+def disconnect(gateway: JavaGateway):
+    gateway.close(close_callback_server_connections=True)
+    gateway.shutdown()
+
+def start_game(AI):
+        manager.registerAI("PPOPython", PPOAI(gateway, gameRounds=args.rounds, train=args.train))
+        if AI=='WinOrGoHome':
+            p2=WinOrGoHome(gateway)
+        else:
+            p2 = LTAI(gateway)
+        manager.registerAI(p2.__class__.__name__, p2)
+        print("="*20)
+        print("Starting Game")
+        print(f"AI:{AI}")
+        print("="*20)
+
+        game = manager.createGame("ZEN", "ZEN",
+                                  "PPOPython",
+                                  p2.__class__.__name__,
+                                  GAME_NUM)
+        manager.runGame(game)
+
+        print("="*20)
+        print("Game Stopped")
+        print("="*20)
+        sys.stdout.flush()
+
+def close_gateway():
+	gateway.close_callback_server()
+	gateway.close()
+
+def main_process(AI):
+	start_game(AI)
+	close_gateway()
+
+if __name__=="__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-r", "--rounds", type=int, help="Number of rounds to play for each iteration", default=2)
+    parser.add_argument("-i", "--iters", type=int, help="Number of iterations", default=100)
+    parser.add_argument("-p", "--port", type=int, help="Game server port", default=4242)
+    parser.add_argument("--train", help="Run in training mode (default is simulation)", action="store_true", default=False)
+    parser.add_argument("--er", help="exploration rate", type=float, default=0.3)
+
+    args = parser.parse_args()
+    AIs=dict()
+    AIs['AI']=['BlackMamba',
+    'ERHEA_PPO_PG',
+    'MctsAi',
+    'WinOrGoHome',
+    'LTAI']
+    AIs['platform_list']=['Java']*3+['Python']*2
+    AIs['num_win']=np.array([0]*len(AIs['AI']))
+    AIs['num_round']=np.array([0]*len(AIs['AI']))
+    
+    for iter in range(args.iters):
+        if exists("/win_lose.txt") and ran>=args.er:
+            with open("/win_lose.txt",'r') as file1:
+                lines = file1.readlines()
+                for line in lines:
+                    win+=if_win*int(line)
+                    lose+=(1-if_win)*int(line)
+                    if_win=1-if_win
+                AIs['num_win'][idx]+=win
+                AIs['num_round'][idx]+=win+lose
+            win_rate=AIs['num_win']/AIs['num_round']
+            idx=np.where(win_rate==np.max(win_rate))[0]
+        else:
+            idx=random.randrange(len(AIs['AI']))
+        AI=AIs['AI'][idx]
+        if AIs['platform_list'][idx]=='Java':
+            gateway = connect(args)
+
+            pid = os.getpid()
+            prog = psutil.Process(pid)
+
+            print("="*20)
+            print("Starting Game")
+            print(f"AI:{AI}")
+            print("="*20)
+            try:
+                run(args, AI, gateway)
+            except Py4JError:
+                print(traceback.format_exc())
+            except Exception:
+                print(traceback.format_exc())
+            finally:
+                disconnect(gateway)
+                print("="*20)
+                print("Game Stopped")
+                print("="*20)
+                # prog.terminate()
+        else:
+            GAME_NUM = args.rounds
+            gateway = JavaGateway(gateway_parameters=GatewayParameters(args.port), callback_server_parameters=CallbackServerParameters());
+            manager = gateway.entry_point
+            main_process(AI)
+        win=0
+        lose=0
+        if_win=1
+        with open("win_lose.txt",'r') as file1:
+            lines = file1.readlines()
+            for line in lines:
+                win+=if_win*int(line)
+                lose+=(1-if_win)*int(line)
+                if_win=1-if_win
+            AIs['num_win'][idx]+=win
+            AIs['num_round'][idx]+=win+lose
