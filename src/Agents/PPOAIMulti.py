@@ -1,5 +1,6 @@
 # implementation of PPO AI
 import os
+import glob
 import torch
 from datetime import datetime
 from typing import Tuple
@@ -48,8 +49,13 @@ class PPOAI(AIInterface):
             self.max_grad_norm,
             self.training
         )
+        
         # set session name
-        self.writer_session = datetime.now().strftime("%b-%d_%H-%M-%S")
+        if len(os.listdir(os.path.join("logging", "PPOAI")))>0:
+            list_of_files = glob.glob(os.path.join("logging", "PPOAI")+'\\*')
+            self.writer_session = os.path.basename(max(list_of_files, key=os.path.getctime))
+        else:
+            self.writer_session = datetime.now().strftime("%b-%d_%H-%M-%S")
         # remove previous log files
         # if os.path.exists(os.path.join("logging", "PPOAI")):
         #     shutil.rmtree(os.path.join("logging", "PPOAI"))
