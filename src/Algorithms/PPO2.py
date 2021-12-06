@@ -107,7 +107,8 @@ class PPO(object):
         lr_actor, lr_critic,
         num_epochs, discount,
         eps_clip, batch_size,
-        max_grad_norm, train
+        max_grad_norm, train,
+        beta = 0.01
     ):
         self.discount = discount
         self.num_epochs = num_epochs
@@ -117,6 +118,7 @@ class PPO(object):
         self.batch_size = batch_size
         self.max_grad_norm = max_grad_norm
         self.training = train
+        self.beta = beta
         self.iter_count = 0
 
         # create buffer
@@ -211,10 +213,13 @@ class PPO(object):
                 # take gradient step
                 self.optim.zero_grad()
                 loss.mean().backward()
+                torch.nn.utils.clip_grad.clip_grad_norm_(self.AC.parameters(), max_norm=self.max_grad_norm)
                 self.optim.step()
                 writer.add_scalar("PPO/Loss", loss.cpu().detach().mean().item(), self.iter_count)
                 writer.add_scalar("PPO/Advantage", advantages.cpu().detach().mean().item(), self.iter_count)
                 self.iter_count += 1
+        self.eps_clip *= 0.999
+        self.beta *= 0.999
         self.AC.eval()
         # save weights after training
         self.AC_saved.load_state_dict(self.AC.state_dict())

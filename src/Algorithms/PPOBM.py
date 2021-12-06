@@ -252,7 +252,8 @@ class PPO(object):
         lr_actor, lr_critic,
         num_epochs, discount,
         eps_clip, batch_size,
-        max_grad_norm, train
+        max_grad_norm, train,
+        beta = 0.01
     ):
         self.discount = discount
         self.num_epochs = num_epochs
@@ -262,6 +263,7 @@ class PPO(object):
         self.batch_size = batch_size
         self.max_grad_norm = max_grad_norm
         self.training = train
+        self.beta = beta
         self.iter_count = 0
 
         # create buffer
@@ -347,7 +349,7 @@ class PPO(object):
                 old_actions_gpu = old_actions[indices].to(self.device)
                 old_logprobs_gpu = old_logprobs[indices].to(self.device)
                 # get critics
-                _, logprob, state_values = self.AC.evaluate(old_states_gpu, old_actions_gpu)
+                entropy, logprob, state_values = self.AC.evaluate(old_states_gpu, old_actions_gpu)
                 # compute advantages
                 advantages = (target_values_gpu - state_values).detach()
                 # find the ratio (pi_theta / pi_theta__old)
@@ -356,7 +358,7 @@ class PPO(object):
                 surr1 = ratios * advantages
                 surr2 = torch.clamp(ratios, 1 - self.eps_clip, 1 + self.eps_clip) * advantages
                 # compute actor loss
-                loss_actor = -torch.min(surr1, surr2).mean()
+                loss_actor = -torch.min(surr1, surr2).mean() + self.beta * entropy.mean()
                 # optimize actor
                 self.optim_actor.zero_grad()
                 loss_actor.backward()
@@ -373,6 +375,8 @@ class PPO(object):
                 writer.add_scalar("PPO/Loss Critic", loss_critic.cpu().detach().mean().item(), self.iter_count)
                 writer.add_scalar("PPO/Advantage", advantages.cpu().detach().mean().item(), self.iter_count)
                 self.iter_count += 1
+        self.eps_clip *= 0.999
+        self.beta *= 0.999
         self.AC.eval()
         # save weights after training
         self.AC_saved.load_state_dict(self.AC.state_dict())

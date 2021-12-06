@@ -1,34 +1,35 @@
 # test PPO implementation in simple environments
 
 # from src.Algorithms.PPO import PPO
-from src.Algorithms.PPO2 import PPO
+from src.Algorithms.PPO import PPO
 import shutil, os
 import gym
 import numpy as np
 from torch.utils.tensorboard.writer import SummaryWriter
 
 if __name__=="__main__":
-    env = gym.make("CartPole-v1")
+    env = gym.make("CartPole-v0")
 
     if os.path.exists("logging/test"):
         shutil.rmtree("logging/test")
 
     model = PPO(
-        state_dimension=4,
-        action_dimension=2,
-        lr_actor=1e-4,
-        lr_critic=3e-4,
+        state_dimension=env.observation_space.shape[0],
+        action_dimension=env.action_space.n,
+        lr_actor=1e-5,
+        lr_critic=5e-5,
         train=True,
         num_epochs=120,
         discount=0.99,
         eps_clip=0.2,
-        max_grad_norm=0.5,
-        batch_size=1000
+        max_grad_norm=5.0,
+        batch_size=500,
+        beta=0.01
     )
     
     max_eq_len = 400
     time_step = 0
-    update_timestep = 8000
+    update_timestep = 4000
     render_timestep = int(500)
 
     writer = SummaryWriter("logging/test")

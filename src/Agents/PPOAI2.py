@@ -13,20 +13,20 @@ class PPOAI2(AIInterface):
         self.gateway = gateway
         # set whether in training mode
         self.training = train
-        self.training_steps = 6000
+        self.training_steps = 4000
         self.training_steps_count = 0
         self.frame_skip = frameSkip
         # set parameters
         self.actions = Actions()
         self.state_dimensions = 147 # NOTE: set correct number of dimensions here
         self.action_dimensions = self.actions.count # 56
-        self.lr_actor = 1e-4
-        self.lr_critic = 3e-4
+        self.lr_actor = 1e-5
+        self.lr_critic = 5e-5
         self.train_epochs = 120
         self.discount = 0.99
         self.eps_clip = 0.2
-        self.batchsize = 1000
-        self.max_grad_norm = 0.2
+        self.batchsize = 500
+        self.max_grad_norm = 5.0
         self.reward_sum = 0
         self.reward_eps = 0
         self.sim_count = 0
@@ -270,5 +270,5 @@ class PPOAI2(AIInterface):
         """
         me, opp = self.hp_me, self.hp_opp
         self.hp_me, self.hp_opp = self.getHPs()
-        return ((self.hp_me - me) - (self.hp_opp - opp)) / 400.0
-        # return ((self.hp_me - me) - (self.hp_opp - opp))
+        # return ((self.hp_me - me) - (self.hp_opp - opp)) / 400.0
+        return ((self.hp_me - me) - (self.hp_opp - opp))
