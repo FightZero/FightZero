@@ -5,10 +5,10 @@ from datetime import datetime
 from typing import Tuple
 from torch.utils.tensorboard.writer import SummaryWriter
 from .Abstract import AIInterface
-from ..Algorithms.PPO import PPO
-from ..Utils.Actions import Actions
+from ..Algorithms.PPOBM import PPO
+from ..Utils.ActionsBM import Actions
 
-class PPOAI(AIInterface):
+class PPOAIBM(AIInterface):
     def __init__(self, gateway, gameRounds=2, train=False, frameSkip=False):
         self.gateway = gateway
         # set whether in training mode
@@ -18,7 +18,7 @@ class PPOAI(AIInterface):
         self.frame_skip = frameSkip
         # set parameters
         self.actions = Actions()
-        self.state_dimensions = 147 # NOTE: set correct number of dimensions here
+        self.state_dimensions = 143 # NOTE: set correct number of dimensions here
         self.action_dimensions = self.actions.count # 56
         self.lr_actor = 1e-4
         self.lr_critic = 3e-4
@@ -50,9 +50,6 @@ class PPOAI(AIInterface):
         )
         # set session name
         self.writer_session = datetime.now().strftime("%b-%d_%H-%M-%S")
-        # remove previous log files
-        # if os.path.exists(os.path.join("logging", "PPOAI")):
-        #     shutil.rmtree(os.path.join("logging", "PPOAI"))
         
     def initialize(self, gameData, isPlayerOne):
         # set command center
@@ -67,13 +64,13 @@ class PPOAI(AIInterface):
         self.simulator = self.gameData.getSimulator()
         self.justStarted = True
         # set checkpoint file name
-        self.checkpoint_name = "ppo_" + self.character + ".pt"
+        self.checkpoint_name = "ppobm_" + self.character + ".pt"
         # load model if necessary
         if os.path.exists(self.checkpoint_name) and self.game_count <= 0:
             self.model.load(self.checkpoint_name)
             print("PPO Checkpoint Loaded")
         # create session writer
-        self.writer = SummaryWriter("logging/PPOAI/" + self.writer_session)
+        self.writer = SummaryWriter("logging/PPOAIBM/" + self.writer_session)
         print("AI Initialized, Mode=" + ("training" if self.training else "playing"))
         return 0
 
@@ -205,28 +202,32 @@ class PPOAI(AIInterface):
         obs = []
         # information of me
         obs.append(me.getHp() / 400.0)
+        obs.append(me.getEnergy() / 300.0) # get energy
         obs.append((me.getLeft() + me.getRight()) * 0.5 / 960.0) # get position X
         obs.append((me.getBottom() + me.getTop()) * 0.5 / 640.0) # get position Y
-        obs.append(me.getEnergy() / 300.0) # get energy
         obs.append(int(me.getSpeedX() >= 0.0))
         obs.append(abs(me.getSpeedX()) / 15.0) # get horizontal speed
         obs.append(int(me.getSpeedY() >= 0.0))
         obs.append(abs(me.getSpeedY()) / 28.0) # get vertical speed
+        actionMe = [0.0] * self.actions.count
+        actionMe[me.getAction().ordinal()] = 1.0
+        obs.extend(actionMe)
         obs.append(me.getRemainingFrame() / 70.0) # remaining frames to back to normal
-        obs.append(int(me.isFront())) # whether facing front
-        obs.append(me.getState().ordinal()) # get state STAND / CROUCH/ AIR / DOWN
         # information of opponent
         obs.append(opp.getHp() / 400.0)
+        obs.append(opp.getEnergy() / 300.0)
         obs.append((opp.getLeft() + opp.getRight()) * 0.5 / 960.0)
         obs.append((opp.getBottom() + opp.getTop()) * 0.5 / 640.0)
-        obs.append(opp.getEnergy() / 300.0)
         obs.append(int(opp.getSpeedX() >= 0.0))
         obs.append(abs(opp.getSpeedX()) / 15.0)
         obs.append(int(opp.getSpeedY() >= 0.0))
         obs.append(abs(opp.getSpeedY()) / 28.0)
+        actionOpp = [0.0] * self.actions.count
+        actionOpp[opp.getAction().ordinal()] = 1.0
+        obs.extend(actionOpp)
         obs.append(opp.getRemainingFrame() / 70.0)
-        obs.append(int(opp.isFront()))
-        obs.append(opp.getState().ordinal())
+        # remaining time
+        obs.append(frameData.getFramesNumber() / 3600.0)
         # for attacks
         attMe = frameData.getProjectilesByP1() if self.player else frameData.getProjectilesByP2()
         attOpp = frameData.getProjectilesByP2() if self.player else frameData.getProjectilesByP1()
@@ -244,15 +245,6 @@ class PPOAI(AIInterface):
             attOppObs[i * 3 + 2] = (hitarea.getBottom() + hitarea.getTop()) * 0.5 / 640.0
         obs.extend(attMeObs)
         obs.extend(attOppObs)
-        # remaining time
-        obs.append(frameData.getFramesNumber() / 3600.0)
-        # onehot action vector
-        actionMe = [0.0] * self.actions.count
-        actionMe[me.getAction().ordinal()] = 1.0
-        obs.extend(actionMe)
-        actionOpp = [0.0] * self.actions.count
-        actionOpp[opp.getAction().ordinal()] = 1.0
-        obs.extend(actionOpp)
         obs = torch.clamp(torch.FloatTensor([obs]), 0.0, 1.0)
         return obs
 

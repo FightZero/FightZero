@@ -181,15 +181,15 @@ class PPO(object):
                 reward_disc = 0.0
             reward_disc = reward + (self.discount * reward_disc)
             rewards.insert(0, reward_disc)
-        rewards = rewards[-len(self.buffer.states):]
+        length = len(rewards)
         # normalize the rewards
         target_values = torch.FloatTensor(rewards).to(self.device)
         target_values = (target_values - target_values.mean()) / (target_values.std() + 1e-8)
         # target_values = target_values.view(-1, 1)
         # convert list to tensor
-        old_states = torch.squeeze(torch.stack(self.buffer.states, dim=0)).detach().to(self.device)
-        old_actions = torch.squeeze(torch.stack(self.buffer.actions, dim=0)).detach().to(self.device)
-        old_logprobs = torch.squeeze(torch.stack(self.buffer.logprobs, dim=0)).detach().to(self.device)
+        old_states = torch.squeeze(torch.stack(self.buffer.states[:length], dim=0)).detach().to(self.device)
+        old_actions = torch.squeeze(torch.stack(self.buffer.actions[:length], dim=0)).detach().to(self.device)
+        old_logprobs = torch.squeeze(torch.stack(self.buffer.logprobs[:length], dim=0)).detach().to(self.device)
         # start training
         self.AC.train()
         for _ in range(self.num_epochs):
@@ -226,179 +226,3 @@ class PPO(object):
         if not self.training: return
         self.buffer.rewards.append(reward)
         self.buffer.is_terminals.append(is_terminal)
-
-
-
-# this class implements PPO model
-# with actor and critic updated individually
-# class PPO(object):
-#     def __init__(self, 
-#         state_dimension, action_dimension,
-#         lr_actor, lr_critic,
-#         num_epochs, discount,
-#         eps_clip, batch_size,
-#         max_grad_norm, train
-#     ):
-#         self.discount = discount
-#         self.num_epochs = num_epochs
-#         self.eps_clip = eps_clip
-#         self.lr_actor = lr_actor
-#         self.lr_critic = lr_critic
-#         self.batch_size = batch_size
-#         self.max_grad_norm = max_grad_norm
-#         self.training = train
-#         self.iter_count = 0
-
-#         # create buffer
-#         self.buffer = PPOBuffer()
-#         # select running environment for train
-#         self.device = "cuda" if torch.cuda.is_available() else "cpu"
-#         # create actor critic model
-#         self.AC = ActorCritic(state_dimension, action_dimension).to(self.device)
-#         # set optimizer
-#         self.optim_actor = Adam(self.AC.actor.parameters(), lr_actor)
-#         self.optim_critic = Adam(self.AC.critic.parameters(), lr_critic)
-#         # self.optim_actor = RMSprop(self.AC.actor.parameters(), lr_actor)
-#         # self.optim_critic = RMSprop(self.AC.critic.parameters(), lr_critic)
-#         # set saved model
-#         self.AC_saved = ActorCritic(state_dimension, action_dimension).to(self.device)
-#         self.AC_saved.load_state_dict(self.AC.state_dict())
-#         self.AC_saved.eval()
-#         # set loss function
-#         self.loss = nn.MSELoss()
-
-#     def action(self, state):
-#         """
-#         Choose next action
-#         """
-#         with torch.no_grad():
-#             # get new action from actor
-#             state = torch.FloatTensor(state).to(self.device)
-#             action, logprob = self.AC_saved.action(state)
-#         # store into buffer
-#         if self.training:
-#             self.buffer.states.append(state)
-#             self.buffer.actions.append(action)
-#             self.buffer.logprobs.append(logprob)
-#         return action.cpu().item()
-
-#     def save(self, filename):
-#         """
-#         Save current network to file path
-#         """
-#         torch.save((
-#             self.AC_saved.state_dict(),
-#             self.optim_actor.state_dict(),
-#             self.optim_critic.state_dict(),
-#         ), filename)
-
-#     def load(self, filename):
-#         """
-#         Load network from file path
-#         """
-#         states, opt1, opt2 = torch.load(filename, map_location=lambda storage, _: storage)
-#         self.AC.load_state_dict(states)
-#         self.AC_saved.load_state_dict(states)
-#         self.optim_actor.load_state_dict(opt1)
-#         self.optim_critic.load_state_dict(opt2)
-
-#     def train(self, writer : SummaryWriter):
-#         """
-#         Update policy
-#         """
-#         if not self.training: return
-#         if self.buffer.isEmpty(): return
-#         rewards = []
-#         reward_disc = 0.0
-#         for reward, is_terminal in zip(reversed(self.buffer.rewards), reversed(self.buffer.is_terminals)):
-#             # if is terminal state, set reward to 0
-#             if is_terminal:
-#                 reward_disc = 0.0
-#             reward_disc = reward + (self.discount * reward_disc)
-#             rewards.insert(0, reward_disc)
-#         rewards = rewards[-len(self.buffer.states):]
-#         # normalize the rewards
-#         target_values = torch.FloatTensor(rewards).to(self.device)
-#         target_values = (target_values - target_values.mean()) / (target_values.std() + 1e-8)
-#         # target_values = target_values.view(-1, 1)
-#         # convert list to tensor
-#         old_states = torch.squeeze(torch.stack(self.buffer.states, dim=0)).detach().to(self.device)
-#         old_actions = torch.squeeze(torch.stack(self.buffer.actions, dim=0)).detach().to(self.device)
-#         old_logprobs = torch.squeeze(torch.stack(self.buffer.logprobs, dim=0)).detach().to(self.device)
-#         # old_actions = torch.squeeze(torch.stack(self.buffer.actions, dim=0)).detach().view(-1, 1).to(self.device)
-#         # old_logprobs = torch.squeeze(torch.stack(self.buffer.logprobs, dim=0)).detach().view(-1, 1).to(self.device)
-#         # start training
-#         self.AC.train()
-#         for _ in range(self.num_epochs):
-#             # get critics
-#             _, logprob, critics = self.AC.evaluate(old_states, old_actions)
-#             state_values = torch.squeeze(critics)
-#             # compute advantages
-#             advantages = (target_values - state_values).detach()
-#             # find the ratio (pi_theta / pi_theta__old)
-#             ratios = torch.exp((logprob - old_logprobs))
-#             # find Surrogate Loss (Clipped Surrogate Objective)
-#             surr1 = ratios * advantages
-#             surr2 = torch.clamp(ratios, 1 - self.eps_clip, 1 + self.eps_clip) * advantages
-#             # compute actor loss
-#             loss_actor = -torch.min(surr1, surr2).mean()
-#             # optimize actor
-#             self.optim_actor.zero_grad()
-#             loss_actor.backward()
-#             torch.nn.utils.clip_grad.clip_grad_norm_(self.AC.actor.parameters(), max_norm=self.max_grad_norm)
-#             self.optim_actor.step()
-#             # compute critic loss
-#             loss_critic = self.loss(target_values, state_values)
-#             self.optim_critic.zero_grad()
-#             loss_critic.backward()
-#             torch.nn.utils.clip_grad.clip_grad_norm_(self.AC.critic.parameters(), max_norm=self.max_grad_norm)
-#             self.optim_critic.step()
-#             # log in tensorboard
-#             writer.add_scalar("PPO/Loss Actor", loss_actor.cpu().detach().item(), self.iter_count)
-#             writer.add_scalar("PPO/Loss Critic", loss_critic.cpu().detach().mean().item(), self.iter_count)
-#             writer.add_scalar("PPO/Advantage", advantages.cpu().detach().mean().item(), self.iter_count)
-#             self.iter_count += 1
-#         # for _ in range(self.num_epochs):
-#         #     for indices in BatchSampler(SubsetRandomSampler(range(len(self.buffer.states))), batch_size=self.batch_size, drop_last=True):
-#         #         # get critics
-#         #         _, logprob, state_values = self.AC.evaluate(old_states[indices], old_actions[indices])
-#         #         # state_values = torch.squeeze(critics)
-#         #         # compute advantages
-#         #         advantages = (target_values[indices] - state_values).detach()
-#         #         # find the ratio (pi_theta / pi_theta__old)
-#         #         ratios = torch.exp((logprob - old_logprobs[indices]))
-#         #         # find Surrogate Loss (Clipped Surrogate Objective)
-#         #         surr1 = ratios * advantages
-#         #         surr2 = torch.clamp(ratios, 1 - self.eps_clip, 1 + self.eps_clip) * advantages
-#         #         # compute actor loss
-#         #         loss_actor = -torch.min(surr1, surr2).mean()
-#         #         # optimize actor
-#         #         self.optim_actor.zero_grad()
-#         #         loss_actor.backward()
-#         #         torch.nn.utils.clip_grad.clip_grad_norm_(self.AC.actor.parameters(), max_norm=self.max_grad_norm)
-#         #         self.optim_actor.step()
-#         #         # compute critic loss
-#         #         loss_critic = self.loss(target_values[indices], state_values)
-#         #         self.optim_critic.zero_grad()
-#         #         loss_critic.backward()
-#         #         torch.nn.utils.clip_grad.clip_grad_norm_(self.AC.critic.parameters(), max_norm=self.max_grad_norm)
-#         #         self.optim_critic.step()
-#         #         # log in tensorboard
-#         #         writer.add_scalar("PPO/Loss Actor", loss_actor.cpu().detach().item(), self.iter_count)
-#         #         writer.add_scalar("PPO/Loss Critic", loss_critic.cpu().detach().mean().item(), self.iter_count)
-#         #         writer.add_scalar("PPO/Advantage", advantages.cpu().detach().mean().item(), self.iter_count)
-#         #         self.iter_count += 1
-#         self.AC.eval()
-#         # save weights after training
-#         self.AC_saved.load_state_dict(self.AC.state_dict())
-#         self.AC_saved.eval()
-#         # clear buffer
-#         self.buffer.reset()
-
-#     def update(self, reward, is_terminal):
-#         """
-#         Update buffer
-#         """
-#         if not self.training: return
-#         self.buffer.rewards.append(reward)
-#         self.buffer.is_terminals.append(is_terminal)

@@ -3,4 +3,5 @@ FTG4.50/*
 **pycache**
 logging/*
 *.pt
+!src/Algorithms/blackmamba.pt
 tmp/*
