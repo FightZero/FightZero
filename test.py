@@ -19,21 +19,21 @@ if __name__=="__main__":
         lr_actor=1e-4,
         lr_critic=3e-4,
         train=True,
-        num_epochs=80,
+        num_epochs=120,
         discount=0.99,
         eps_clip=0.2,
-        max_grad_norm=0.2,
-        batch_size=64
+        max_grad_norm=0.5,
+        batch_size=1000
     )
     
     max_eq_len = 400
     time_step = 0
-    update_timestep = 4000
+    update_timestep = 8000
     render_timestep = int(500)
 
     writer = SummaryWriter("logging/test")
 
-    for episode in range(5000):
+    for episode in range(8000):
         done = False
         episode_reward = 0
         state = env.reset().tolist()
