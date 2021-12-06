@@ -1,6 +1,7 @@
 # test PPO implementation in simple environments
 
-from src.Algorithms.PPO import PPO
+# from src.Algorithms.PPO import PPO
+from src.Algorithms.PPO2 import PPO
 import shutil, os
 import gym
 import numpy as np
