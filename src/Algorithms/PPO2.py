@@ -183,27 +183,31 @@ class PPO(object):
             rewards.insert(0, reward_disc)
         length = len(rewards)
         # normalize the rewards
-        target_values = torch.FloatTensor(rewards).to(self.device)
+        target_values = torch.FloatTensor(rewards)
         target_values = (target_values - target_values.mean()) / (target_values.std() + 1e-8)
         target_values = target_values.view(-1, 1)
         # convert list to tensor
-        old_states = torch.squeeze(torch.stack(self.buffer.states[:length], dim=0)).detach().to(self.device)
-        old_actions = torch.squeeze(torch.stack(self.buffer.actions[:length], dim=0)).view(-1, 1).detach().to(self.device)
-        old_logprobs = torch.squeeze(torch.stack(self.buffer.logprobs[:length], dim=0)).view(-1, 1).detach().to(self.device)
+        old_states = torch.squeeze(torch.stack(self.buffer.states[:length], dim=0)).detach()
+        old_actions = torch.squeeze(torch.stack(self.buffer.actions[:length], dim=0)).view(-1, 1).detach()
+        old_logprobs = torch.squeeze(torch.stack(self.buffer.logprobs[:length], dim=0)).view(-1, 1).detach()
         # start training
         self.AC.train()
         for _ in range(self.num_epochs):
-            for indices in BatchSampler(RandomSampler(range(len(self.buffer.states))), batch_size=self.batch_size, drop_last=True):
+            for indices in BatchSampler(RandomSampler(range(length)), batch_size=self.batch_size, drop_last=True):
+                target_values_gpu = target_values[indices].to(self.device)
+                old_states_gpu = old_states[indices].to(self.device)
+                old_actions_gpu = old_actions[indices].to(self.device)
+                old_logprobs_gpu = old_logprobs[indices].to(self.device)
                 # Evaluating old actions and values
-                entropy, logprob, state_values = self.AC.evaluate(old_states[indices], old_actions[indices])
+                entropy, logprob, state_values = self.AC.evaluate(old_states_gpu, old_actions_gpu)
                 # Finding the ratio (pi_theta / pi_theta_old)
-                ratios = torch.exp(logprob - old_logprobs[indices])
+                ratios = torch.exp(logprob - old_logprobs_gpu)
                 # Finding Surrogate Loss
-                advantages = (target_values[indices] - state_values).detach()   
+                advantages = (target_values_gpu - state_values).detach()   
                 surr1 = ratios * advantages
                 surr2 = torch.clamp(ratios, 1-self.eps_clip, 1+self.eps_clip) * advantages
                 # final loss of clipped objective PPO
-                loss = -torch.min(surr1, surr2) + 0.5*self.loss(state_values, target_values[indices]) - 0.01*entropy
+                loss = -torch.min(surr1, surr2) + 0.5*self.loss(state_values, target_values_gpu) - 0.01*entropy
                 # take gradient step
                 self.optim.zero_grad()
                 loss.mean().backward()
