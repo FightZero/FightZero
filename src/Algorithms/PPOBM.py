@@ -7,6 +7,7 @@ from torch.distributions import Categorical
 from torch.utils.tensorboard.writer import SummaryWriter
 from torch.utils.data import BatchSampler, RandomSampler
 from typing import Tuple
+import numpy as np
 
 # this class implements an actor critic model with linear networks
 class ActorCritic(nn.Module):
@@ -345,9 +346,10 @@ class PPO(object):
         target_values = (target_values - target_values.mean()) / (target_values.std() + 1e-8)
         target_values = target_values.view(-1, 1)
         # convert list to tensor
-        old_states = torch.squeeze(torch.stack(self.buffer.states[:length], dim=0)).detach()
+        old_states = torch.squeeze(torch.stack(self.buffer.states[:length], dim=0)).view(-1, 1).detach()
         old_actions = torch.squeeze(torch.stack(self.buffer.actions[:length], dim=0)).view(-1, 1).detach()
         old_logprobs = torch.squeeze(torch.stack(self.buffer.logprobs[:length], dim=0)).view(-1, 1).detach()
+        print('shape:',old_states.shape,old_states.shape)
         # start training
         self.AC.train()
         for _ in range(self.num_epochs):

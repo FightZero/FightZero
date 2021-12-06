@@ -21,7 +21,7 @@ class PPOAI(AIInterface):
         self.actions = Actions()
         self.state_dimensions = 143 # NOTE: set correct number of dimensions here
         self.action_dimensions = self.actions.count # 56
-        self.lr_actor = 1e-4
+        self.lr_actor = 1e-5
         self.lr_critic = 3e-4
         self.train_epochs = 120
         self.discount = 0.99
@@ -30,7 +30,11 @@ class PPOAI(AIInterface):
         self.max_grad_norm = 0.2
         self.reward_sum = 0
         self.reward_eps = 0
-        self.sim_count = 0
+        if os.path.exists('sim_count.txt'):
+            with open('sim_count.txt','r') as f:
+                self.sim_count=int(f.read())
+        else:
+            self.sim_count = 0
         self.num_win = 0
         self.num_lose = 0
         self.game_count = 0
@@ -121,6 +125,8 @@ class PPOAI(AIInterface):
         self.writer.add_scalar("PPOAI/Reward", reward, self.sim_count)
         self.writer.add_scalar("PPOAI/Reward Accumulated", self.reward_sum, self.sim_count)
         self.sim_count += 1
+        with open('sim_count.txt','w') as f:
+            f.write(int(self.sim_count))
         # if training, get next observation and train
         if self.training:
             if not self.justStarted:
