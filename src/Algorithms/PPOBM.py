@@ -41,6 +41,11 @@ class ActorCritic(nn.Module):
                 )
             ))
             print("BlackMamba checkpoint loaded")
+            with open(os.path.join(
+                os.path.dirname(os.path.realpath(__file__)),
+                'is_loaded_bm.txt'), 'w') as f:
+                f.write('')
+            f.close()
 
         # create critic network
         self.critic = nn.Sequential(

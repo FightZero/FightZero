@@ -16,7 +16,7 @@ import numpy as np
 
 def run(args, AI, gateway: JavaGateway):
     manager = gateway.entry_point
-    manager.registerAI("PPOPython", PPOAI(gateway, gameRounds=args.rounds, train=args.train, frameSkip=args.skip))
+    manager.registerAI("PPOPython", PPOAI(gateway, gameRounds=args.games, train=args.train, frameSkip=args.skip))
     # manager.registerAI("KickAIPython", KickAI(gateway))
 
     # Good Candidates:
@@ -27,7 +27,7 @@ def run(args, AI, gateway: JavaGateway):
     # 5. LGIST_Bot
     # 6. UtalFighter
     
-    game = manager.createGame("ZEN", "ZEN", "PPOPython", AI, args.rounds)
+    game = manager.createGame("ZEN", "ZEN", "PPOPython", AI, args.games)
     manager.runGame(game)
 
 def connect(args):
@@ -42,7 +42,7 @@ def disconnect(gateway: JavaGateway):
 
 def start_game(AI,gateway):
     manager = gateway.entry_point
-    manager.registerAI("PPOPython", PPOAI(gateway, gameRounds=args.rounds, train=args.train, frameSkip=args.skip))
+    manager.registerAI("PPOPython", PPOAI(gateway, gameRounds=args.games, train=args.train, frameSkip=args.skip))
     if AI=='WinOrGoHome':
         p2=WinOrGoHome(gateway)
     else:
@@ -71,7 +71,7 @@ def main_process(AI):
 
 if __name__=="__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("-r", "--rounds", type=int, help="Number of rounds to play for each iteration", default=2)
+    parser.add_argument("-g", "--games", type=int, help="Number of games to play for each iteration", default=5)
     parser.add_argument("-i", "--iters", type=int, help="Number of iterations", default=100)
     parser.add_argument("-p", "--port", type=int, help="Game server port", default=4242)
     parser.add_argument("--train", help="Run in training mode (default is simulation)", action="store_true", default=False)
@@ -104,7 +104,6 @@ if __name__=="__main__":
             idx=np.where(win_rate==np.min(win_rate))[0]
         else:
             idx=random.randrange(len(AIs['AI']))
-        idx=2
         AI=AIs['AI'][idx]
         if AIs['platform_list'][idx]=='Java':
             gateway = connect(args)
@@ -129,7 +128,7 @@ if __name__=="__main__":
                 print("="*20)
                 # prog.terminate()
         else:
-            GAME_NUM = args.rounds
+            GAME_NUM = args.games
             gateway = connect(args)
             manager = gateway.entry_point
             main_process(AI)
