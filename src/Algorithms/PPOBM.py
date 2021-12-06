@@ -80,7 +80,7 @@ class ActorCritic(nn.Module):
         dist = Categorical(probs=probs)
         # get distribution entropy and log probs of chosen action
         entropy = dist.entropy()
-        logprob = dist.log_prob(action)
+        logprob = dist.log_prob(action).diagonal().view(action.shape)
         # get critic value
         critics = self.critic(state)
         return entropy, logprob, critics
