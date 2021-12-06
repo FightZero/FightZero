@@ -30,13 +30,17 @@ class ActorCritic(nn.Module):
             nn.Linear(100, self.d_action),
             nn.Softmax(dim=1)
         )
-        self.actor.load_state_dict(torch.load(
-            os.path.join(
+
+        if not os.path.exists(os.path.join(
                 os.path.dirname(os.path.realpath(__file__)),
-                "blackmamba.pt"
-            )
-        ))
-        print("BlackMamba checkpoint loaded")
+                'is_loaded_bm.txt')):
+            self.actor.load_state_dict(torch.load(
+                os.path.join(
+                    os.path.dirname(os.path.realpath(__file__)),
+                    "blackmamba.pt"
+                )
+            ))
+            print("BlackMamba checkpoint loaded")
 
         # create critic network
         self.critic = nn.Sequential(
@@ -80,7 +84,8 @@ class ActorCritic(nn.Module):
         dist = Categorical(probs=probs)
         # get distribution entropy and log probs of chosen action
         entropy = dist.entropy()
-        logprob = dist.log_prob(action).diagonal().view(action.shape)
+        logprob = dist.log_prob(action)
+        # logprob = dist.log_prob(action).diagonal().view(action.shape)
         # get critic value
         critics = self.critic(state)
         return entropy, logprob, critics
