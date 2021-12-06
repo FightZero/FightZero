@@ -13,7 +13,7 @@ class PPOAI(AIInterface):
         self.gateway = gateway
         # set whether in training mode
         self.training = train
-        self.training_steps = 4000
+        self.training_steps = 6000
         self.training_steps_count = 0
         self.frame_skip = frameSkip
         # set parameters
@@ -25,7 +25,7 @@ class PPOAI(AIInterface):
         self.train_epochs = 120
         self.discount = 0.99
         self.eps_clip = 0.2
-        self.batchsize = 128
+        self.batchsize = 1000
         self.max_grad_norm = 0.2
         self.reward_sum = 0
         self.reward_eps = 0
@@ -151,7 +151,7 @@ class PPOAI(AIInterface):
     def roundEnd(self, p1Hp, p2Hp, frames):
         # update win/lose count
         # self.model.action(self.observe())
-        self.model.update(0, True)
+        self.model.update(self.getReward(), True)
         if self.player:
             if p1Hp >= p2Hp:
                 self.num_win += 1
@@ -270,5 +270,5 @@ class PPOAI(AIInterface):
         """
         me, opp = self.hp_me, self.hp_opp
         self.hp_me, self.hp_opp = self.getHPs()
-        # return ((self.hp_me - me) - (self.hp_opp - opp)) / 400.0
-        return ((self.hp_me - me) - (self.hp_opp - opp))
+        return ((self.hp_me - me) - (self.hp_opp - opp)) / 400.0
+        # return ((self.hp_me - me) - (self.hp_opp - opp))

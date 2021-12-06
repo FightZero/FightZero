@@ -5,7 +5,7 @@ import torch.nn as nn
 from torch.optim import Adam, RMSprop
 from torch.distributions import Categorical
 from torch.utils.tensorboard.writer import SummaryWriter
-from torch.utils.data import BatchSampler, SubsetRandomSampler
+from torch.utils.data import BatchSampler, RandomSampler
 from typing import Tuple
 
 # this class implements an actor critic model with linear networks
@@ -68,7 +68,7 @@ class ActorCritic(nn.Module):
         dist = Categorical(probs=probs)
         # get distribution entropy and log probs of chosen action
         entropy = dist.entropy()
-        logprob = dist.log_prob(action)
+        logprob = dist.log_prob(action).diagonal().view(action.shape)
         # get critic value
         critics = self.critic(emb)
         return entropy, logprob, critics
@@ -183,35 +183,38 @@ class PPO(object):
             rewards.insert(0, reward_disc)
         length = len(rewards)
         # normalize the rewards
-        target_values = torch.FloatTensor(rewards).to(self.device)
+        target_values = torch.FloatTensor(rewards)
         target_values = (target_values - target_values.mean()) / (target_values.std() + 1e-8)
-        # target_values = target_values.view(-1, 1)
+        target_values = target_values.view(-1, 1)
         # convert list to tensor
-        old_states = torch.squeeze(torch.stack(self.buffer.states[:length], dim=0)).detach().to(self.device)
-        old_actions = torch.squeeze(torch.stack(self.buffer.actions[:length], dim=0)).detach().to(self.device)
-        old_logprobs = torch.squeeze(torch.stack(self.buffer.logprobs[:length], dim=0)).detach().to(self.device)
+        old_states = torch.squeeze(torch.stack(self.buffer.states[:length], dim=0)).detach()
+        old_actions = torch.squeeze(torch.stack(self.buffer.actions[:length], dim=0)).view(-1, 1).detach()
+        old_logprobs = torch.squeeze(torch.stack(self.buffer.logprobs[:length], dim=0)).view(-1, 1).detach()
         # start training
         self.AC.train()
         for _ in range(self.num_epochs):
-            # Evaluating old actions and values
-            entropy, logprob, critics = self.AC.evaluate(old_states, old_actions)
-            # match state_values tensor dimensions with rewards tensor
-            state_values = torch.squeeze(critics)
-            # Finding the ratio (pi_theta / pi_theta_old)
-            ratios = torch.exp(logprob - old_logprobs)
-            # Finding Surrogate Loss
-            advantages = target_values - state_values.detach()   
-            surr1 = ratios * advantages
-            surr2 = torch.clamp(ratios, 1-self.eps_clip, 1+self.eps_clip) * advantages
-            # final loss of clipped objective PPO
-            loss = -torch.min(surr1, surr2) + 0.5*self.loss(state_values, target_values) - 0.01*entropy
-            # take gradient step
-            self.optim.zero_grad()
-            loss.mean().backward()
-            self.optim.step()
-            writer.add_scalar("PPO/Loss", loss.cpu().detach().mean().item(), self.iter_count)
-            writer.add_scalar("PPO/Advantage", advantages.cpu().detach().mean().item(), self.iter_count)
-            self.iter_count += 1
+            for indices in BatchSampler(RandomSampler(range(length)), batch_size=self.batch_size, drop_last=True):
+                target_values_gpu = target_values[indices].to(self.device)
+                old_states_gpu = old_states[indices].to(self.device)
+                old_actions_gpu = old_actions[indices].to(self.device)
+                old_logprobs_gpu = old_logprobs[indices].to(self.device)
+                # Evaluating old actions and values
+                entropy, logprob, state_values = self.AC.evaluate(old_states_gpu, old_actions_gpu)
+                # Finding the ratio (pi_theta / pi_theta_old)
+                ratios = torch.exp(logprob - old_logprobs_gpu)
+                # Finding Surrogate Loss
+                advantages = (target_values_gpu - state_values).detach()   
+                surr1 = ratios * advantages
+                surr2 = torch.clamp(ratios, 1-self.eps_clip, 1+self.eps_clip) * advantages
+                # final loss of clipped objective PPO
+                loss = -torch.min(surr1, surr2) + 0.5*self.loss(state_values, target_values_gpu) - 0.01*entropy
+                # take gradient step
+                self.optim.zero_grad()
+                loss.mean().backward()
+                self.optim.step()
+                writer.add_scalar("PPO/Loss", loss.cpu().detach().mean().item(), self.iter_count)
+                writer.add_scalar("PPO/Advantage", advantages.cpu().detach().mean().item(), self.iter_count)
+                self.iter_count += 1
         self.AC.eval()
         # save weights after training
         self.AC_saved.load_state_dict(self.AC.state_dict())
