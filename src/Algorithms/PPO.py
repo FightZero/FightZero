@@ -204,8 +204,7 @@ class PPO(object):
                 old_actions_gpu = old_actions[indices].to(self.device)
                 old_logprobs_gpu = old_logprobs[indices].to(self.device)
                 # get critics
-                entropy, logprob, state_values = self.AC.evaluate(old_states_gpu, old_actions_gpu)
-                # state_values = torch.squeeze(critics)
+                _, logprob, state_values = self.AC.evaluate(old_states_gpu, old_actions_gpu)
                 # compute advantages
                 advantages = (target_values_gpu - state_values).detach()
                 # find the ratio (pi_theta / pi_theta__old)
@@ -214,7 +213,7 @@ class PPO(object):
                 surr1 = ratios * advantages
                 surr2 = torch.clamp(ratios, 1 - self.eps_clip, 1 + self.eps_clip) * advantages
                 # compute actor loss
-                loss_actor = -torch.min(surr1, surr2).mean() + self.beta * entropy.mean()
+                loss_actor = -torch.min(surr1, surr2).mean()
                 # optimize actor
                 self.optim_actor.zero_grad()
                 loss_actor.backward()

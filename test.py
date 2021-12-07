@@ -1,7 +1,7 @@
 # test PPO implementation in simple environments
 
 # from src.Algorithms.PPO import PPO
-from src.Algorithms.PPO import PPO
+from src.Algorithms.PPO2 import PPO
 import shutil, os
 import gym
 import numpy as np
@@ -16,8 +16,8 @@ if __name__=="__main__":
     model = PPO(
         state_dimension=env.observation_space.shape[0],
         action_dimension=env.action_space.n,
-        lr_actor=1e-4,
-        lr_critic=5e-4,
+        lr_actor=1e-5,
+        lr_critic=5e-5,
         train=True,
         num_epochs=50,
         discount=0.999,
