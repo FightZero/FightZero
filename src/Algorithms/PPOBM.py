@@ -273,7 +273,11 @@ class PPO(object):
         self.batch_size = batch_size
         self.max_grad_norm = max_grad_norm
         self.training = train
-        self.iter_count = 0
+        if os.path.exists('iter_count.txt'):
+            with open('iter_count.txt','r') as f:
+                self.iter_count=int(f.read())
+        else:
+            self.iter_count = 0
 
         # create buffer
         self.buffer = PPOBuffer()
@@ -346,10 +350,9 @@ class PPO(object):
         target_values = (target_values - target_values.mean()) / (target_values.std() + 1e-8)
         target_values = target_values.view(-1, 1)
         # convert list to tensor
-        old_states = torch.squeeze(torch.stack(self.buffer.states[:length], dim=0)).view(-1, 1).detach()
+        old_states = torch.squeeze(torch.stack(self.buffer.states[:length], dim=0)).detach()
         old_actions = torch.squeeze(torch.stack(self.buffer.actions[:length], dim=0)).view(-1, 1).detach()
         old_logprobs = torch.squeeze(torch.stack(self.buffer.logprobs[:length], dim=0)).view(-1, 1).detach()
-        print('shape:',old_states.shape,old_states.shape)
         # start training
         self.AC.train()
         for _ in range(self.num_epochs):
@@ -385,6 +388,8 @@ class PPO(object):
                 writer.add_scalar("PPO/Loss Critic", loss_critic.cpu().detach().mean().item(), self.iter_count)
                 writer.add_scalar("PPO/Advantage", advantages.cpu().detach().mean().item(), self.iter_count)
                 self.iter_count += 1
+                with open('iter_count.txt','w') as f:
+                    f.write(str(self.iter_count))
         self.AC.eval()
         # save weights after training
         self.AC_saved.load_state_dict(self.AC.state_dict())

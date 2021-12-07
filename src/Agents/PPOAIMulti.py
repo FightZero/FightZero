@@ -35,10 +35,20 @@ class PPOAI(AIInterface):
                 self.sim_count=int(f.read())
         else:
             self.sim_count = 0
+
+        if os.path.exists('game_count.txt'):
+            with open('game_count.txt','r') as f:
+                self.game_count=int(f.read())
+        else:
+            self.game_count = 0
+
+        if os.path.exists('round_count.txt'):
+            with open('round_count.txt','r') as f:
+                self.round_count=int(f.read())
+        else:
+            self.round_count = 0
         self.num_win = 0
         self.num_lose = 0
-        self.game_count = 0
-        self.round_count = 0
         self.game_total = gameRounds
         self.hp_me, self.hp_opp = 400, 400 # NOTE: default 400 each side
         # create model
@@ -126,7 +136,7 @@ class PPOAI(AIInterface):
         self.writer.add_scalar("PPOAI/Reward Accumulated", self.reward_sum, self.sim_count)
         self.sim_count += 1
         with open('sim_count.txt','w') as f:
-            f.write(int(self.sim_count))
+            f.write(str(self.sim_count))
         # if training, get next observation and train
         if self.training:
             if not self.justStarted:
@@ -149,6 +159,9 @@ class PPOAI(AIInterface):
 
     def close(self):
         self.game_count += 1
+        with open('game_count.txt','w') as f:
+            f.write(str(self.game_count))
+
         # if is training, save current model
         if self.training and self.game_count >= self.game_total:
             print("PPO Training")
@@ -157,7 +170,7 @@ class PPOAI(AIInterface):
         self.writer.add_scalar("PPOAI/Num Win", self.num_win, self.game_count)
         self.writer.add_scalar("PPOAI/Num Lose", self.num_lose, self.game_count)
         self.writer.close()
-        if self.game_count==1:
+        if self.game_count % self.game_total==1:
             with open("win_lose.txt", "w") as f:
                 f.write(str(self.num_win)+'\n')
                 f.write(str(self.num_lose)+'\n')
@@ -212,7 +225,12 @@ class PPOAI(AIInterface):
         self.writer.add_scalar("PPOAI/Reward Episodic", self.reward_eps, self.round_count)
         self.reward_eps = 0
         self.round_count += 1
+        with open('round_count.txt','w') as f:
+            f.write(str(self.round_count))       
+         
         self.sim_count += 1
+        with open('sim_count.txt','w') as f:
+            f.write(str(self.sim_count))
         # reset health
         self.hp_me, self.hp_opp = 400, 400
         print("Round Ended")

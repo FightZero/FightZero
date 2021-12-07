@@ -1,0 +1,1 @@
+{'AI': ['BlackMamba', 'ERHEA_PPO_PG', 'MctsAi', 'WinOrGoHome', 'LTAI'], 'platform_list': ['Java', 'Java', 'Java', 'Python', 'Python'], 'num_win': array([0, 0, 0, 0, 0]), 'num_round': array([ 6,  0, 39, 27, 12])}

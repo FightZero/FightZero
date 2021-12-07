@@ -13,6 +13,7 @@ from WinOrGoHome import WinOrGoHome
 import random
 from os.path import exists
 import numpy as np
+import json
 
 def run(args, AI, gateway: JavaGateway):
     manager = gateway.entry_point
@@ -71,7 +72,7 @@ def main_process(AI):
 
 if __name__=="__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("-g", "--games", type=int, help="Number of games to play for each iteration", default=5)
+    parser.add_argument("-g", "--games", type=int, help="Number of games to play for each iteration", default=1)
     parser.add_argument("-i", "--iters", type=int, help="Number of iterations", default=100)
     parser.add_argument("-p", "--port", type=int, help="Game server port", default=4242)
     parser.add_argument("--train", help="Run in training mode (default is simulation)", action="store_true", default=False)
@@ -79,15 +80,20 @@ if __name__=="__main__":
     parser.add_argument("--skip", help="Whether to skip frames (default is false)", action="store_true", default=False)
 
     args = parser.parse_args()
-    AIs=dict()
-    AIs['AI']=['BlackMamba',
-    'ERHEA_PPO_PG',
-    'MctsAi',
-    'WinOrGoHome',
-    'LTAI']
-    AIs['platform_list']=['Java']*3+['Python']*2
-    AIs['num_win']=np.array([0]*len(AIs['AI']))
-    AIs['num_round']=np.array([0]*len(AIs['AI']))
+    if os.path.exists('AIs.txt'):
+        with open('AIs.txt','w') as f:
+            data=f.read()
+        AIs=json.loads(data)
+    else:
+        AIs=dict()
+        AIs['AI']=['BlackMamba',
+        'ERHEA_PPO_PG',
+        'MctsAi',
+        'WinOrGoHome',
+        'LTAI']
+        AIs['platform_list']=['Java']*3+['Python']*2
+        AIs['num_win']=np.array([0]*len(AIs['AI']))
+        AIs['num_round']=np.array([0]*len(AIs['AI']))
     
     for iter in range(args.iters):
         print(f'training percentage:{iter/args.iters*100}%')
@@ -143,3 +149,5 @@ if __name__=="__main__":
                 if_win=1-if_win
             AIs['num_win'][idx]+=win
             AIs['num_round'][idx]+=win+lose
+        with open('AIs.txt','w') as f:
+            f.write(str(AIs))
