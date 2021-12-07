@@ -16,13 +16,13 @@ if __name__=="__main__":
     model = PPO(
         state_dimension=env.observation_space.shape[0],
         action_dimension=env.action_space.n,
-        lr_actor=1e-5,
-        lr_critic=5e-5,
+        lr_actor=1e-4,
+        lr_critic=5e-4,
         train=True,
-        num_epochs=120,
-        discount=0.99,
+        num_epochs=50,
+        discount=0.999,
         eps_clip=0.2,
-        max_grad_norm=5.0,
+        max_grad_norm=0.5,
         batch_size=500,
         beta=0.01
     )

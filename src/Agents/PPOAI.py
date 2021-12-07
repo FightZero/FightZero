@@ -18,15 +18,16 @@ class PPOAI(AIInterface):
         self.frame_skip = frameSkip
         # set parameters
         self.actions = Actions()
-        self.state_dimensions = 147 # NOTE: set correct number of dimensions here
+        self.state_dimensions = 147*2 # NOTE: set correct number of dimensions here
         self.action_dimensions = self.actions.count # 56
-        self.lr_actor = 1e-5
-        self.lr_critic = 5e-5
-        self.train_epochs = 120
-        self.discount = 0.99
+        self.lr_actor = 1e-4
+        self.lr_critic = 5e-4
+        self.train_epochs = 50
+        self.discount = 0.999
         self.eps_clip = 0.2
         self.batchsize = 500
-        self.max_grad_norm = 5.0
+        self.max_grad_norm = 0.5
+        self.beta = 0.01
         self.reward_sum = 0
         self.reward_eps = 0
         self.sim_count = 0
@@ -46,7 +47,8 @@ class PPOAI(AIInterface):
             self.eps_clip,
             self.batchsize,
             self.max_grad_norm,
-            self.training
+            self.training,
+            self.beta
         )
         # set session name
         self.writer_session = datetime.now().strftime("%b-%d_%H-%M-%S")
@@ -191,10 +193,12 @@ class PPOAI(AIInterface):
         """
         Observe current state, and create state info
         """
-        # nextFrameData = self.simulator.simulate(self.frameData, self.player, None, None, 17)
-        obs = self.extract(self.frameData)
-        # obs.extend(self.extract(nextFrameData))
-        return obs
+        nextFrameData = self.simulator.simulate(self.frameData, self.player, None, None, 15)
+        obs = torch.cat((
+            self.extract(self.frameData),
+            self.extract(nextFrameData)
+        ))
+        return obs.view(1, -1)
 
     def extract(self, frameData) -> torch.Tensor:
         """
@@ -253,7 +257,7 @@ class PPOAI(AIInterface):
         actionOpp = [0.0] * self.actions.count
         actionOpp[opp.getAction().ordinal()] = 1.0
         obs.extend(actionOpp)
-        obs = torch.clamp(torch.FloatTensor([obs]), 0.0, 1.0)
+        obs = torch.clamp(torch.FloatTensor(obs), 0.0, 1.0)
         return obs
 
     def getHPs(self) -> Tuple[int, int]:
@@ -270,5 +274,5 @@ class PPOAI(AIInterface):
         """
         me, opp = self.hp_me, self.hp_opp
         self.hp_me, self.hp_opp = self.getHPs()
-        # return ((self.hp_me - me) - (self.hp_opp - opp)) / 400.0
-        return ((self.hp_me - me) - (self.hp_opp - opp))
+        return ((self.hp_me - me) - (self.hp_opp - opp)) / 40.0
+        # return ((self.hp_me - me) - (self.hp_opp - opp))

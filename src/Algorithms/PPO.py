@@ -17,9 +17,7 @@ class ActorCritic(nn.Module):
         self.d_action = action_dimension
         # create actor network
         self.actor = nn.Sequential(
-            nn.Linear(self.d_state, 1024),
-            nn.LeakyReLU(),
-            nn.Linear(1024, 512),
+            nn.Linear(self.d_state, 512),
             nn.LeakyReLU(),
             nn.Linear(512, 256),
             nn.LeakyReLU(),
@@ -30,11 +28,11 @@ class ActorCritic(nn.Module):
         )
         # create critic network
         self.critic = nn.Sequential(
-            nn.Linear(self.d_state, 1024),
-            nn.LeakyReLU(),
-            nn.Linear(1024, 512),
+            nn.Linear(self.d_state, 512),
             nn.LeakyReLU(),
             nn.Linear(512, 256),
+            nn.LeakyReLU(),
+            nn.Linear(256, 256),
             nn.LeakyReLU(),
             nn.Linear(256, 128),
             nn.LeakyReLU(),

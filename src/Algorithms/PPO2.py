@@ -31,11 +31,11 @@ class ActorCritic(nn.Module):
             nn.Linear(64, 1)
         )
         self.backbone = nn.Sequential(
-            nn.Linear(self.d_state, 1024),
-            nn.LeakyReLU(),
-            nn.Linear(1024, 512),
+            nn.Linear(self.d_state, 512),
             nn.LeakyReLU(),
             nn.Linear(512, 256),
+            nn.LeakyReLU(),
+            nn.Linear(256, 256),
             nn.LeakyReLU()
         )
 
