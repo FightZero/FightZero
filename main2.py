@@ -13,7 +13,7 @@ from WinOrGoHome import WinOrGoHome
 import random
 from os.path import exists
 import numpy as np
-import json
+import pickle
 
 def run(args, AI, gateway: JavaGateway):
     manager = gateway.entry_point
@@ -80,10 +80,10 @@ if __name__=="__main__":
     parser.add_argument("--skip", help="Whether to skip frames (default is false)", action="store_true", default=False)
 
     args = parser.parse_args()
-    if os.path.exists('AIs.txt'):
-        with open('AIs.txt','w') as f:
-            data=f.read()
-        AIs=json.loads(data)
+    if os.path.exists('AIs.pkl'):
+        with open('AIs.pkl','rb') as f:
+            AIs = pickle.load(f)
+        f.close()
     else:
         AIs=dict()
         AIs['AI']=['BlackMamba',
@@ -97,7 +97,7 @@ if __name__=="__main__":
     
     for iter in range(args.iters):
         print(f'training percentage:{iter/args.iters*100}%')
-        if exists("/win_lose.txt") and ran>=args.er:
+        if exists("/win_lose.txt") and random.uniform(0, 1)>=args.er:
             with open("/win_lose.txt",'r') as file1:
                 lines = file1.readlines()
                 for line in lines:
@@ -106,6 +106,7 @@ if __name__=="__main__":
                     if_win=1-if_win
                 AIs['num_win'][idx]+=win
                 AIs['num_round'][idx]+=win+lose
+            file1.close()
             win_rate=AIs['num_win']/AIs['num_round']
             idx=np.where(win_rate==np.min(win_rate))[0]
         else:
@@ -149,5 +150,7 @@ if __name__=="__main__":
                 if_win=1-if_win
             AIs['num_win'][idx]+=win
             AIs['num_round'][idx]+=win+lose
-        with open('AIs.txt','w') as f:
-            f.write(str(AIs))
+        file1.close()
+        with open('AIs.pkl','wb') as f:
+            pickle.dump(AIs, f)
+        f.close()
